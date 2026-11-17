@@ -2,6 +2,9 @@
 
 Each `## x.y.z` section becomes the release notes for that version.
 
+## 0.1.20
+- `/ash inspect target` searches the whole target frame, and every frame the game names for target buffs, wherever it's attached.
+
 ## 0.1.19
 - Nameplates: the level badge is replaced too. The game's gold-ringed badge and its selected ring are gone, and the number sits in a small Ashwright box. The skull for units far above your level stays.
 - Nameplate cast bars are flat, on Ashwright's panel, in the same cast colors as your own. The interrupt shield and the "targeting you" mark stay.

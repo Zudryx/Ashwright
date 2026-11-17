@@ -168,6 +168,34 @@ function ns.Inspect(kind)
       end
     end
     if i == 0 then scan(tf, 1, "TargetFrame") end
+    -- deeper: anything with an icon anywhere under the target frame (5 levels)
+    local function deep(f, depth, path)
+      if depth > 5 or not f.GetChildren then return end
+      for n, c in ipairs({ f:GetChildren() }) do
+        local t = ns.safe(c.GetObjectType, c)
+        local shown = ns.safe(c.IsShown, c)
+        if c.Icon and t ~= "StatusBar" and shown == true then
+          i = i + 1; out[#out + 1] = describe(c, "deep " .. path .. ".c" .. n)
+        end
+        deep(c, depth + 1, path .. ".c" .. n)
+      end
+    end
+    deep(tf, 1, "TargetFrame")
+    -- and any named frame the game made for target auras, wherever it hangs
+    local named = {}
+    for k, v in pairs(_G) do
+      if type(k) == "string" and type(v) == "table" and k:find("^TargetFrame")
+         and (k:find("Buff") or k:find("Debuff") or k:find("Aura")) and not k:find("ToT") then
+        named[#named + 1] = k
+      end
+    end
+    table.sort(named)
+    out[#out + 1] = { path = "named target aura frames", text = #named > 0 and table.concat(named, ", ") or "none" }
+    for n, k in ipairs(named) do
+      if n <= 8 and type(_G[k]) == "table" and _G[k].GetObjectType then
+        i = i + 1; out[#out + 1] = describe(_G[k], k)
+      end
+    end
     out[#out + 1] = { path = "aura count", text = tostring(i) }
   end
   ns.db.inspect = ns.db.inspect or {}
