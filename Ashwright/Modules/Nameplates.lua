@@ -20,6 +20,28 @@ end
 
 local function castBar(uf)
   return uf.castBar or uf.CastBar or uf.CastingBarFrame
+      or (uf.CastBarsContainer and (uf.CastBarsContainer.castBar or uf.CastBarsContainer.CastBar))
+end
+
+-- The level badge right of the bar: the game's gold-ringed badge and its
+-- "selected" ring go, an Ashwright box takes their place under the number.
+-- The skull for units far above your level stays: it tells you something.
+local function styleLevel(uf)
+  local lv = uf.PlayerLevelDiffFrame
+  if not lv or lv.__ash then return end
+  lv.__ash = true
+  ns.Each(function(t) ns.Kill(t, true) end, lv.playerLevelDiffIcon, lv.selectedBorder)
+  -- a frame of its own under the badge (a child of the badge would draw
+  -- over the number)
+  local box = ns.Box(uf, 1)
+  box:SetAllPoints(lv)
+  box:SetFrameLevel(math.max(lv:GetFrameLevel() - 1, 0))
+  box:SetBackdropColor(unpack(C.panelSolid))
+  box:SetBackdropBorderColor(unpack(C.barBorder))
+  lv.__ashBox = box
+  local text = lv.playerLevelDiffText
+  if text then ns.Font(text, "body", nil, "OUTLINE") end
+  ns.Note("nameplates", "level badge", "UnitFrame.PlayerLevelDiffFrame")
 end
 
 local function isTarget(unit)
@@ -75,14 +97,19 @@ local function stylePlate(plate)
           hb.border, hb.Border, hb.background, hb.Background)
   styled[plate] = ns.Panel(hb, { pad = 0, bg = C.healthBg, border = C.barBorder })
 
+  -- Cast bar: flat fill in the cast colors, the game's background and border
+  -- replaced by a panel. The interrupt shield and "targeting you" marks stay:
+  -- the game shows them by secret state, and they carry information.
   local cb = castBar(uf)
-  if cb and cb.SetStatusBarTexture then
+  if cb and cb.SetStatusBarTexture and not cb.__ash then
+    cb.__ash = true
     ns.Note("nameplates", "cast bar", "found")
-    ns.FlatFill(cb)
-    ns.Kill(cb.Border or cb.border)
-    ns.Kill(cb.Background or cb.background)
+    ns.FlatFill(cb, ns.CastRecolor)
+    if ns.CastRecolor then ns.Keep(cb, "SetStatusBarColor", ns.CastRecolor); ns.CastRecolor(cb) end
+    ns.Each(function(t) ns.Kill(t, true) end, cb.Border or cb.border, cb.Background or cb.background)
     ns.Panel(cb, { pad = 0, bg = C.panelSolid, border = C.barBorder })
   end
+  styleLevel(uf)
 
   local name = uf.name or uf.Name
   if name then ns.Font(name, "body", nil, "OUTLINE") end

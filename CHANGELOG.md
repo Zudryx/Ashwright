@@ -2,6 +2,10 @@
 
 Each `## x.y.z` section becomes the release notes for that version.
 
+## 0.1.19
+- Nameplates: the level badge is replaced too. The game's gold-ringed badge and its selected ring are gone, and the number sits in a small Ashwright box. The skull for units far above your level stays.
+- Nameplate cast bars are flat, on Ashwright's panel, in the same cast colors as your own. The interrupt shield and the "targeting you" mark stay.
+
 ## 0.1.18
 - Nameplates: the game's rounded border and gloss are removed from the health bar, so only the flat bar on its thin dark frame is left. Heal prediction still shows.
 - `/ash inspect plate` records what's drawn on your target's nameplate.

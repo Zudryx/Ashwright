@@ -47,6 +47,8 @@ local function recolor(bar)
   if c then bar:SetStatusBarColor(c[1], c[2], c[3]) end
 end
 
+ns.CastRecolor = recolor   -- nameplate cast bars use the same colors
+
 local function styleBar(b)
   local bar = ns.Find("castbars", b.key, unpack(b.paths))
   if not bar or bar.__ash then return end

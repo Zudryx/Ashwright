@@ -273,8 +273,19 @@ local function makePlate(token)
   hb.myHealPrediction = new("Frame"); hb.myHealPrediction.Fill = new("Texture")
   hb.myHealPrediction.__regions = { hb.myHealPrediction.Fill }
   hb.__children = { hb.Frame, hb.myHealPrediction }
-  if LAYOUT == "modern" then uf.HealthBarsContainer = { healthBar = hb } else uf.healthBar = hb end
-  uf.castBar = bar(); uf.name = new("FontString")
+  if LAYOUT == "modern" then
+    uf.HealthBarsContainer = { healthBar = hb }
+    -- the modern plate keeps its cast bar in a container and has a level badge
+    local cb = bar(); cb.Background = new("Texture"); cb.Border = new("Texture"); cb.barType = "channel"
+    uf.CastBarsContainer = { castBar = cb }
+    local lv = new("Frame"); lv.__level = 52
+    lv.playerLevelDiffIcon = new("Texture"); lv.selectedBorder = new("Texture"); lv.playerLevelDiffText = new("FontString")
+    lv.highLevelTexture = new("Texture")
+    uf.PlayerLevelDiffFrame = lv
+  else
+    uf.healthBar = hb; uf.castBar = bar()
+  end
+  uf.name = new("FontString")
   plates[token] = p
   return p
 end
@@ -629,6 +640,22 @@ assert(phb.Frame.Left.__shown == false and phb.Frame.Right.__shown == false, "na
 assert(phb.Gloss.__shown == false, "nameplate gloss still drawn")
 assert(phb:GetStatusBarTexture().__shown ~= false, "nameplate fill was hidden")
 assert(phb.myHealPrediction.Fill.__shown ~= false, "heal prediction was hidden")
+if LAYOUT == "modern" then
+  local uf = p1.UnitFrame
+  local lv = uf.PlayerLevelDiffFrame
+  assert(lv.playerLevelDiffIcon.__shown == false and lv.selectedBorder.__shown == false, "level badge art still drawn")
+  assert(lv.highLevelTexture.__shown ~= false, "skull icon hidden")
+  assert(lv.__ashBox and lv.__ashBox.__level < lv.__level, "level box missing or drawn over the number")
+  local cb = uf.CastBarsContainer.castBar
+  assert(cb.__tex == ns.WHITE, "plate cast bar not flat")
+  assert(cb.Background.__shown == false and cb.Border.__shown == false, "plate cast bar art still drawn")
+  local g = ns.modules.castbars.TYPE_COLOR.channel
+  assert(cb.__color and math.abs(cb.__color[2] - g[2]) < 1e-3, "plate cast bar not in the cast colors")
+  -- a secret "shown" from the game never errors and never brings art back
+  local errs = #ns.db.errors
+  lv.selectedBorder:SetShown(SECRET)
+  assert(#ns.db.errors == errs and lv.selectedBorder.__shown == false, "secret SetShown broke the hide")
+end
 
 -- slash commands and scan
 SlashCmdList.ASHWRIGHT("module minimap off")

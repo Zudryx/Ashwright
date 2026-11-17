@@ -26,7 +26,7 @@ How it stays safe
 ]]
 
 local ADDON, ns = ...
-ns.VERSION = "0.1.18"
+ns.VERSION = "0.1.19"
 _G.Ashwright = ns
 
 local WHITE = "Interface\\Buttons\\WHITE8X8"
@@ -166,7 +166,8 @@ function ns.Kill(region, hard)
     region.__ashHidden = true
     region:Hide()
     ns.Keep(region, "Show", function(self) self:Hide() end)
-    ns.Keep(region, "SetShown", function(self, v) if v then self:Hide() end end)
+    -- never test the value: the game passes secret booleans for some art
+    ns.Keep(region, "SetShown", function(self) self:Hide() end)
   end
 end
 
