@@ -202,6 +202,43 @@ function ns.Inspect(kind)
     local uf = ns.modules.unitframes
     local outside = uf and uf.AuraContainers and uf.AuraContainers(tf, true) or {}
     out[#out + 1] = { path = "aura containers found", text = tostring(#outside) }
+    -- whatever is drawn just under the target frame, found by position: every
+    -- shown frame from the frame's left to right edge and up to 80 px below it
+    local l, r, b = ns.safe(tf.GetLeft, tf), ns.safe(tf.GetRight, tf), ns.safe(tf.GetBottom, tf)
+    local okNums = type(l) == "number" and type(r) == "number" and type(b) == "number"
+      and not ns.isSecret(l) and not ns.isSecret(r) and not ns.isSecret(b)
+    local near = 0
+    if okNums and EnumerateFrames then
+      local f = EnumerateFrames()
+      while f and near < 30 do
+        local ok, fl, ft, fs = false
+        if not (f.IsForbidden and f:IsForbidden()) then
+          ok, fl, ft, fs = pcall(function() return f:GetLeft(), f:GetTop(), f:IsVisible() end)
+        end
+        if ok and fs == true and type(fl) == "number" and type(ft) == "number" and not ns.isSecret(fl)
+           and not ns.isSecret(ft) and fl >= l - 30 and fl <= r + 30 and ft <= b + 70 and ft >= b - 80
+           and not f.__ashBox then
+          local w = ns.safe(f.GetWidth, f)
+          if type(w) == "number" and not ns.isSecret(w) and w < 300 then
+            near = near + 1
+            local e = describe(f, "near target " .. near)
+            local par = ns.safe(f.GetParent, f)
+            e.parent = par and tostring(clean(ns.safe(par.GetDebugName, par) or ns.safe(par.GetName, par))) or "none"
+            local keys = {}
+            pcall(function()
+              for k, v in pairs(f) do
+                if type(k) == "string" and type(v) == "table" and k ~= "__index" then keys[#keys + 1] = k end
+              end
+            end)
+            table.sort(keys)
+            e.fields = table.concat(keys, ",", 1, math.min(#keys, 25))
+            out[#out + 1] = e
+          end
+        end
+        f = EnumerateFrames(f)
+      end
+    end
+    out[#out + 1] = { path = "frames near target", text = okNums and tostring(near) or "positions secret" }
     for n, c in ipairs(outside) do
       out[#out + 1] = describe(c, "container" .. n)
       local kids = { c:GetChildren() }

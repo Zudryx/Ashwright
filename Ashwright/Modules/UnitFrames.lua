@@ -319,7 +319,9 @@ local AURA_GAP = 2
 local AURA_FALLBACK = 8
 
 local function isAuraButton(f)
-  return type(f) == "table" and f.Icon and (f.Cooldown or f.Count) and true or false
+  if type(f) ~= "table" then return false end
+  local icon = f.Icon or f.icon
+  return icon and (f.Cooldown or f.cooldown or f.Count or f.count) and true or false
 end
 
 -- Forever keeps the target's buffs in a container of their own that is not
@@ -340,7 +342,7 @@ local function holdsIcons(f)
   if isAuraButton(f) then return true end
   if not f.GetChildren then return false end
   for _, c in ipairs({ f:GetChildren() }) do
-    if isAuraButton(c) or (type(c) == "table" and c.Icon and c.GetObjectType and c:GetObjectType() ~= "StatusBar") then
+    if isAuraButton(c) or (type(c) == "table" and (c.Icon or c.icon) and c.GetObjectType and c:GetObjectType() ~= "StatusBar") then
       return true
     end
   end
