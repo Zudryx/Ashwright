@@ -1,6 +1,9 @@
 -- Mock client for Ashwright. texlua test/harness.lua <addon dir> <classic|modern> <combat-at-login: 0|1>
 local DIR, LAYOUT, COMBAT_AT_LOGIN = arg[1], arg[2], arg[3] == "1"
 local unpack = table.unpack
+-- WoW's Lua is 5.1: unpack is a global there (texlua happens to have it too;
+-- plain lua5.3 doesn't)
+_G.unpack = _G.unpack or table.unpack
 
 ---------------------------------------------------------------- mock objects
 local methods = {}
