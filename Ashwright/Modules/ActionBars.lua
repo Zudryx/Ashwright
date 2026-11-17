@@ -252,6 +252,10 @@ local function restedBand(t)
   flat(t)
   ns.Keep(t, "SetAtlas", flat)
   ns.Keep(t, "SetTexture", function(self, file) if file ~= ns.WHITE then flat(self) end end)
+  -- the game sets the band's color itself (fully opaque); keep it dim
+  ns.Keep(t, "SetVertexColor", function(self, r, g, b, a)
+    if a ~= REST[4] or r ~= REST[1] then self:SetVertexColor(unpack(REST)) end
+  end)
 end
 
 local function styleStatus(sb)

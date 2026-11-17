@@ -2,6 +2,10 @@
 
 Each `## x.y.z` section becomes the release notes for that version.
 
+## 0.1.17
+- The rested-XP stripe stays dim: the game was turning it fully solid.
+- `/ash inspect target` looks for the target's buffs in more places and lists everything attached to the target frame.
+
 ## 0.1.16
 - `/ash inspect target` records how the game keeps the target's buffs and finds them even when they aren't where it looked before, for fixing buffs that overlap the target frame.
 

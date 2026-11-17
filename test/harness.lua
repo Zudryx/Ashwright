@@ -66,6 +66,7 @@ methods.GetBottom = function(s) return s.__rect and s.__rect[2] end
 methods.GetRight = function(s) return s.__rect and s.__rect[1] + s.__rect[3] end
 methods.GetTop = function(s) return s.__rect and s.__rect[2] + s.__rect[4] end
 methods.SetSize = function(s, w, h) s.__size = { w, h } end
+methods.SetVertexColor = function(s, r, g, b, a) s.__vc = { r, g, b, a } end
 methods.SetShown = function(s, v) s.__shown = v and true or false end
 methods.GetWidth = function(s) return (s.__size and s.__size[1]) or (s.__rect and s.__rect[3]) or 0 end
 methods.GetHeight = function(s) return (s.__size and s.__size[2]) or (s.__rect and s.__rect[4]) or 0 end
@@ -530,6 +531,9 @@ if LAYOUT == "modern" then
   assert(xc.__children[3].StatusBar.Background.__alpha == 0, "xp background not faded")
   local rb = xc.__children[3].ExhaustionLevelFillBar
   assert(rb.__file == ns.WHITE and rb.__alpha ~= 0, "rested band not flat or was hidden")
+  -- the game makes the stripe solid; it goes back to dim
+  rb:SetVertexColor(0.33, 0.36, 0.60, 1)
+  assert(rb.__vc[4] == 0.55, "rested stripe left solid: " .. tostring(rb.__vc[4]))
   local xpf = xc.__children[3]
   assert(xpf.LeftCap.__alpha == 0 and xpf.RightCap.__alpha == 0, "xp end caps not faded")
   assert(xpf.StatusBar:GetStatusBarTexture().__alpha ~= 0, "xp fill was faded")

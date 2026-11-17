@@ -116,12 +116,49 @@ function ns.Inspect(kind)
     if pools and pools.EnumerateActive then
       for a in pools:EnumerateActive() do i = i + 1; out[#out + 1] = describe(a, "aura" .. i) end
     end
+    -- other ways a client keeps them: pool fields with another name, and
+    -- buttons named TargetFrameBuff1 / TargetFrameDebuff1
+    local keys = {}
+    for k, v in pairs(tf) do
+      if type(k) == "string" and type(v) == "table" and (k:lower():find("pool") or k:lower():find("aura")
+         or k:lower():find("buff")) then
+        keys[#keys + 1] = k
+      end
+    end
+    table.sort(keys)
+    out[#out + 1] = { path = "aura-like fields", text = #keys > 0 and table.concat(keys, ", ") or "none" }
+    for _, k in ipairs(keys) do
+      local v = tf[k]
+      if type(v) == "table" and v.EnumerateActive then
+        for a in v:EnumerateActive() do i = i + 1; out[#out + 1] = describe(a, k .. i) end
+      end
+    end
+    for _, kind in ipairs({ "Buff", "Debuff" }) do
+      for n = 1, 40 do
+        local a = _G["TargetFrame" .. kind .. n]
+        if not a then break end
+        i = i + 1; out[#out + 1] = describe(a, "TargetFrame" .. kind .. n)
+      end
+    end
+    -- every direct child of the target frame, by name and type, so nothing hides
+    local kids = {}
+    for _, c in ipairs({ tf:GetChildren() }) do
+      local nm = ns.safe(c.GetDebugName, c) or ns.safe(c.GetName, c) or "?"
+      if ns.isSecret(nm) then nm = "secret" end
+      kids[#kids + 1] = tostring(nm) .. ":" .. tostring(ns.safe(c.GetObjectType, c))
+        .. (ns.safe(c.IsShown, c) and "" or "(hidden)")
+    end
+    out[#out + 1] = { path = "target children", text = table.concat(kids, ", ") }
     -- buttons with an icon, one and two levels down (not the cast bar)
     local function scan(f, depth, path)
       if depth > 2 or not f.GetChildren then return end
       for n, c in ipairs({ f:GetChildren() }) do
         local t = ns.safe(c.GetObjectType, c)
-        if c.Icon and t ~= "StatusBar" then i = i + 1; out[#out + 1] = describe(c, path .. ".c" .. n .. " (icon)") end
+        local nm = ns.safe(c.GetName, c)
+        local namedIcon = type(nm) == "string" and not ns.isSecret(nm) and _G[nm .. "Icon"]
+        if (c.Icon or namedIcon) and t ~= "StatusBar" then
+          i = i + 1; out[#out + 1] = describe(c, path .. ".c" .. n .. " (icon)")
+        end
         scan(c, depth + 1, path .. ".c" .. n)
       end
     end
