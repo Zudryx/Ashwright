@@ -78,6 +78,10 @@ methods.Show = function(s) s.__shown = true end
 methods.Hide = function(s) s.__shown = false end
 
 local frames = {}
+-- timers run at once unless a test queues them to play the game's frame order
+local timerQueue
+C_Timer = { After = function(_, fn) if timerQueue then timerQueue[#timerQueue + 1] = fn else fn() end end }
+local function flushTimers() local q = timerQueue or {}; timerQueue = nil; for _, fn in ipairs(q) do fn() end end
 function CreateFrame(kind, name, parent, template)
   local f = new(kind or "Frame", name)
   f.__parent = parent
@@ -160,6 +164,12 @@ else
   local divf = new("Frame"); divf.BarDividerTexture = new("Texture"); divf.BarDividerTexture.__atlas = "UI-HUD-ExperienceBar-Divider"
   divf.__regions = { divf.BarDividerTexture }
   local xpf = new("Frame"); xpf.StatusBar = bar(); xpf.StatusBar.Background = new("Texture"); xpf.ExhaustionLevelFillBar = new("Texture")
+  -- the rounded end caps and the rested band are regions of the bar frame;
+  -- the fill is a region of the status bar
+  xpf.LeftCap, xpf.RightCap = new("Texture"), new("Texture")
+  xpf.__regions = { xpf.LeftCap, xpf.ExhaustionLevelFillBar, xpf.RightCap }
+  xpf.__children = { xpf.StatusBar }
+  xpf.StatusBar.__regions = { xpf.StatusBar:GetStatusBarTexture(), xpf.StatusBar.Background }
   cont.__children = { divf, xpf }
   local tf = new("Button", "TargetFrame")
   tf.TargetFrameContainer = { FrameTexture = new("Texture") }
@@ -416,6 +426,32 @@ do
     TargetFrame:UpdateAuras()
     _, _, _, ax, ay = a1:GetPoint(1)
     assert(ay == 28, "auras moved twice: " .. tostring(ay))
+    -- positions secret (in a group): auras move down a fixed 8 from the game's spot
+    local outer = TargetFrame.__ashPanel.outer
+    local savedBottom = outer.GetBottom
+    outer.GetBottom = function() return nil end
+    a1:ClearAllPoints(); a1:SetPoint("TOPLEFT", TargetFrame, "BOTTOMLEFT", 5, 32)   -- the game re-lays the auras
+    TargetFrame:UpdateAuras()
+    _, _, _, ax, ay = a1:GetPoint(1)
+    assert(ay == 24, "auras not moved with secret positions: " .. tostring(ay))
+    TargetFrame:UpdateAuras()
+    _, _, _, ax, ay = a1:GetPoint(1)
+    assert(ay == 24, "auras moved twice with secret positions: " .. tostring(ay))
+    outer.GetBottom = savedBottom
+    -- the game re-lays out the target bars in several steps; Ashwright waits
+    -- until it's done, then leaves exactly one anchor (two clashing ones
+    -- made the bars vanish on every other target)
+    timerQueue = {}
+    thb:ClearAllPoints()
+    thb:SetPoint("TOPLEFT", TargetFrame, "TOPLEFT", 20, -30)
+    assert(thb:GetNumPoints() == 1 and thb:GetPoint(1) == "TOPLEFT", "stepped in mid-layout")
+    thb:SetPoint("BOTTOMRIGHT", TargetFrame, "TOPRIGHT", -56, -50)
+    assert(thb:GetNumPoints() == 2, "stepped in mid-layout")
+    thb.__rect = { 270, 490, 156, 20 }   -- where that layout puts it
+    flushTimers()
+    assert(thb:GetNumPoints() == 1, "target bar left with clashing anchors: " .. thb:GetNumPoints())
+    p, rel, rp, x, y = at()
+    assert(p == "TOPRIGHT" and rel == TargetFrame, "target bar not re-placed after the game's layout")
   end
 end
 
@@ -469,6 +505,9 @@ if LAYOUT == "modern" then
   assert(xc.__children[2].StatusBar.Background.__alpha == 0, "xp background not faded")
   local rb = xc.__children[2].ExhaustionLevelFillBar
   assert(rb.__file == ns.WHITE and rb.__alpha ~= 0, "rested band not flat or was hidden")
+  local xpf = xc.__children[2]
+  assert(xpf.LeftCap.__alpha == 0 and xpf.RightCap.__alpha == 0, "xp end caps not faded")
+  assert(xpf.StatusBar:GetStatusBarTexture().__alpha ~= 0, "xp fill was faded")
   assert(MainStatusTrackingBarManager.__children[1].StatusBar.__tex == ns.WHITE, "xp bar not flat")
   assert(MainStatusTrackingBarManager.__children[1].BarFrameTexture.__alpha == 0, "xp bar art not faded")
 else

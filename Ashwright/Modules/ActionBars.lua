@@ -265,6 +265,30 @@ local function styleStatus(sb)
   return true
 end
 
+-- Everything the game draws in a bar container except the fill and the rested
+-- band: frame art, the rounded end caps, the rested tick. Walks nested frames,
+-- skipping Ashwright's own panels.
+local function sweepArt(frame, depth)
+  if type(frame) ~= "table" or not frame.GetRegions or frame.__ashBox or depth > 4 then return end
+  local keep = {}
+  if frame.GetStatusBarTexture then
+    local fill = frame:GetStatusBarTexture()
+    if fill then keep[fill] = true end
+  end
+  if frame.ExhaustionLevelFillBar then keep[frame.ExhaustionLevelFillBar] = true end
+  if frame.__ashTrough then keep[frame.__ashTrough] = true end
+  for _, r in ipairs({ frame:GetRegions() }) do
+    -- fills (flattened) and the rested band (marked __ash) stay
+    if r.GetObjectType and r:GetObjectType() == "Texture" and not keep[r] and not r.__ashFlat and not r.__ash then
+      ns.Kill(r)
+    end
+  end
+  if frame.GetChildren then
+    for _, c in ipairs({ frame:GetChildren() }) do sweepArt(c, depth + 1) end
+  end
+end
+M.SweepArt = sweepArt
+
 -- Managers hold one or more bar containers; each container has a StatusBar
 -- and its own frame art (the segmented border), which is faded.
 local function styleTrackingManager(manager)
@@ -279,7 +303,6 @@ local function styleTrackingManager(manager)
   for _, c in ipairs(containers) do
     if type(c) == "table" then
       -- the segmented frame art and the tick dividers (the game re-shows both)
-      ns.KillTextures(c)
       ns.Kill(c.BarFrameTexture)
       hideDividers(c, 1)
       local sb = c.StatusBar or (c.GetObjectType and c:GetObjectType() == "StatusBar" and c)
@@ -293,6 +316,8 @@ local function styleTrackingManager(manager)
           end
         end
       end
+      -- after styling, so the fills and the rested band are known keepers
+      sweepArt(c, 1)
     end
   end
   return n

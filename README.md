@@ -4,7 +4,7 @@ A dark, minimal reskin of the WoW Forever default UI: flat bars, thin iron borde
 
 Ashwright only changes how Blizzard's frames look. It never moves secure frames, never replaces Blizzard functions and never changes what a button does. Anything that touches a Blizzard frame waits until you are out of combat.
 
-## What it skins (0.1.12)
+## What it skins (0.1.13)
 
 | Module | What changes |
 |---|---|

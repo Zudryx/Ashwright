@@ -270,8 +270,12 @@ function M.AlignTarget()
     th.__ashHome = { tr - fr, tt - ft }
     ns.Keep(th, "SetPoint", function(self)
       if self.__ashPlacing then return end
-      self.__ashHome = nil   -- the game re-laid the frame out: start over from there
-      ns.Run("unitframes align target", M.AlignTarget)
+      -- The game re-laid the frame out: learn the new spot, but only once it
+      -- has finished. Its layout sets several points in a row; stepping in
+      -- after the first one left the bar with conflicting points, and it
+      -- vanished on every other target.
+      self.__ashHome = nil
+      M.RealignSoon()
     end)
   end
   local home = th.__ashHome
@@ -293,22 +297,35 @@ end
 -- Buffs and debuffs under the target and focus frames start right below the
 -- game's frame art, which sits higher than the panel's bottom edge. The first
 -- aura of each group is anchored to the frame; moving it moves its row and
--- the rows under it, which hang from it.
+-- the rows under it, which hang from it. When positions can be read, the
+-- auras start just under the panel; when the game keeps them secret (often
+-- in a group), they move down by a fixed amount instead.
 local AURA_GAP = 2
+local AURA_FALLBACK = 8
+
+local function isAuraButton(f)
+  return type(f) == "table" and f.Icon and (f.Cooldown or f.Count) and true or false
+end
 
 local function auraFrames(frame)
-  local list = {}
+  local list, seen = {}, {}
+  local function add(a) if a and not seen[a] then seen[a] = true; list[#list + 1] = a end end
   if frame.auraPools and frame.auraPools.EnumerateActive then
-    for a in frame.auraPools:EnumerateActive() do list[#list + 1] = a end
+    for a in frame.auraPools:EnumerateActive() do add(a) end
   end
   local name = frame.GetName and frame:GetName()
-  if #list == 0 and name then
+  if name then
     for _, kind in ipairs({ "Buff", "Debuff" }) do
       for i = 1, 40 do
         local a = _G[name .. kind .. i]
         if not a then break end
-        list[#list + 1] = a
+        add(a)
       end
+    end
+  end
+  if #list == 0 and frame.GetChildren then
+    for _, c in ipairs({ frame:GetChildren() }) do
+      if isAuraButton(c) then add(c) end
     end
   end
   return list
@@ -319,29 +336,35 @@ local function anchorY(rel, rp)
   if rp:find("BOTTOM") then return rel:GetBottom() end
   if rp:find("TOP") then return rel:GetTop() end
   local t, b = rel:GetTop(), rel:GetBottom()
-  return t and b and (t + b) / 2
+  return num(t, b) and (t + b) / 2 or nil
 end
 
 function M.NudgeAuras(frame)
   local panel = frame and frame.__ashPanel
   if not panel then return end
   local edge = (panel.outer or panel):GetBottom()
-  if not num(edge) then return end
   local auras = auraFrames(frame)
   local isAura = {}
   for _, a in ipairs(auras) do isAura[a] = true end
   for _, a in ipairs(auras) do
     if a.GetNumPoints and a:GetNumPoints() == 1 then
       local p, rel, rp, x, y = a:GetPoint(1)
-      if p and p:find("TOP") and rel and not isAura[rel] then
+      if p and p:find("TOP") and rel and not isAura[rel] and num(x, y) then
+        -- the y the game chose: ours stays ours until the game sets a new one
+        if a.__ashSetY ~= y then a.__ashGameY = y end
+        local base = a.__ashGameY
+        local want
         local ay = anchorY(rel, rp or p)
-        if num(ay, y) then
-          local want = edge - AURA_GAP - ay   -- the y that puts its top under the panel
-          if y > want then
-            a:ClearAllPoints()
-            a:SetPoint(p, rel, rp, x, math.floor(want))
-          end
+        if num(edge, ay) then
+          want = math.min(base, math.floor(edge - AURA_GAP - ay))
+        else
+          want = base - AURA_FALLBACK
         end
+        if want ~= y then
+          a:ClearAllPoints()
+          a:SetPoint(p, rel, rp, x, want)
+        end
+        a.__ashSetY = want
       end
     end
   end
@@ -352,15 +375,26 @@ local function hookAuras(frame)
   frame.__ashAuras = true
   local function nudge() ns.Guard("unitframes auras", M.NudgeAuras, frame) end
   ns.Each(function(m) if frame[m] then hooksecurefunc(frame, m, nudge) end end,
-          "UpdateAuras", "UpdateAuraPositions")
+          "UpdateAuras", "UpdateAuraFrames", "UpdateAuraPositions")
   nudge()
 end
 
 -- after the game's own handlers have laid the frame out for the new target
-local function realign()
-  local run = function() ns.Run("unitframes align target", M.AlignTarget) end
-  if C_Timer and C_Timer.After then C_Timer.After(0, run) else run() end
+local function soon(fn)
+  if C_Timer and C_Timer.After then C_Timer.After(0, fn) else fn() end
 end
+local pending = false
+local function realign()
+  if pending then return end
+  pending = true
+  soon(function()
+    pending = false
+    ns.Run("unitframes align target", M.AlignTarget)
+    ns.Guard("unitframes auras", M.NudgeAuras, _G.TargetFrame)
+    ns.Guard("unitframes auras", M.NudgeAuras, _G.FocusFrame)
+  end)
+end
+M.RealignSoon = realign
 
 function M.Enable()
   for _, u in ipairs(UNITS) do
@@ -370,13 +404,18 @@ function M.Enable()
   local ev = CreateFrame("Frame")
   ev:RegisterEvent("PLAYER_ENTERING_WORLD")
   ev:RegisterEvent("PLAYER_TARGET_CHANGED")
-  ev:SetScript("OnEvent", realign)
+  ev:RegisterEvent("PLAYER_FOCUS_CHANGED")
+  ev:RegisterEvent("UNIT_AURA")
+  ev:SetScript("OnEvent", function(_, event, unit)
+    if event == "UNIT_AURA" and unit ~= "target" and unit ~= "focus" then return end
+    realign()
+  end)
   local em = _G.EditModeManagerFrame
   if em and em.HookScript then em:HookScript("OnHide", realign) end
   realign()
   hookAuras(_G.TargetFrame)
   hookAuras(_G.FocusFrame)
-  if _G.TargetFrame_UpdateAuras then
-    hooksecurefunc("TargetFrame_UpdateAuras", function(f) ns.Guard("unitframes auras", M.NudgeAuras, f) end)
-  end
+  ns.Each(function(fn)
+    if _G[fn] then hooksecurefunc(fn, function(f) ns.Guard("unitframes auras", M.NudgeAuras, f) end) end
+  end, "TargetFrame_UpdateAuras", "TargetFrame_UpdateAuraPositions")
 end

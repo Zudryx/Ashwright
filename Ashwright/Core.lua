@@ -26,7 +26,7 @@ How it stays safe
 ]]
 
 local ADDON, ns = ...
-ns.VERSION = "0.1.12"
+ns.VERSION = "0.1.13"
 _G.Ashwright = ns
 
 local WHITE = "Interface\\Buttons\\WHITE8X8"
@@ -229,6 +229,7 @@ end
 function ns.Box(parent, px, withBg)
   px = px or 1
   local f = CreateFrame("Frame", nil, parent)
+  f.__ashBox = true
   local edges = {}
   if withBg ~= false then
     f.bg = f:CreateTexture(nil, "BACKGROUND")
