@@ -20,7 +20,19 @@ Portraits stay round for now, and raid frames are not skinned yet.
 
 ## Install
 
-Copy the `Ashwright` folder into `World of Warcraft/<Forever client folder>/Interface/AddOns/`, so that the file `Ashwright.toc` sits directly in `AddOns/Ashwright/`.
+**With the updater (Windows):** download `AshwrightUpdater.zip` from the [latest release](https://github.com/Zudryx/ashwright/releases/latest), unzip it anywhere and double-click **Update Ashwright.bat**. It finds your WoW Forever AddOns folder, installs the newest release, and backs up the copy it replaces. Run it again any time to update. Your settings live in WoW's SavedVariables, so updating never touches them, and your own fonts in `Media` come along.
+
+**By hand:** download `Ashwright-x.y.z.zip` from the [latest release](https://github.com/Zudryx/ashwright/releases/latest) and unzip it into `World of Warcraft/_forever_/Interface/AddOns/`, so that `Ashwright.toc` sits directly in `AddOns/Ashwright/`.
+
+### Test builds
+
+Changes are tried out as **test builds** before they're released: GitHub pre-releases named `vX.Y.Z-test.N`. They never go to CurseForge, and **Update Ashwright.bat** skips them. To try one, run **Update Ashwright (testing).bat** (same zip). To go back to the normal releases, run **Update Ashwright.bat** with `-Force`, or wait for the next release.
+
+### How releases work
+
+- Work goes on the `testing` branch. Every push there runs the tests and publishes a test build (only the newest is kept).
+- Once a test build is tested and approved, `testing` is merged into `main`. That publishes the GitHub release, and later, once Ashwright has a CurseForge project, also uploads that same zip to CurseForge.
+- CurseForge only ever gets what was merged into `main`: never a test build.
 
 ## Commands
 
@@ -55,6 +67,8 @@ See `Ashwright/Media/README.txt` to use custom fonts. Without them, Ashwright us
 `test/harness.lua` runs the addon against a mock client in two layouts (classic-style and modern frame names), with and without combat at login:
 
 ```
-texlua test/harness.lua Ashwright classic 0
-texlua test/harness.lua Ashwright modern 1
+lua5.3 test/harness.lua Ashwright classic 0
+lua5.3 test/harness.lua Ashwright modern 1
 ```
+
+(`texlua` works too.) The release workflow runs all four before every build.

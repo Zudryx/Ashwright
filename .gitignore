@@ -1,2 +1,8 @@
 *.zip
 .DS_Store
+notes.md
+test-notes.md
+cf_notes.md
+updater/ashwright-updater.json
+updater/backup/
+updater/LICENSE.txt
