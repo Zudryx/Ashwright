@@ -170,6 +170,7 @@ else
   -- player bars 124x18 (top 498); target bars 126x20, top 503, frame top-right at 482,540
   hbc.HealthBar.__rect = { 100, 480, 124, 18 }; thb.__rect = { 300, 483, 126, 20 }
   tf.__rect = { 250, 440, 232, 100 }
+  tf.__shown = false   -- no target at login: the bars' spot isn't learned yet
   -- auras: the first hangs from the frame, the second from the first
   local a1, a2 = new("Button"), new("Button")
   a1:SetPoint("TOPLEFT", tf, "BOTTOMLEFT", 5, 32); a2:SetPoint("TOPLEFT", a1, "TOPRIGHT", 2, 0)
@@ -367,6 +368,11 @@ do
     TargetFrame.spellbar.barType = "interrupted"; TargetFrame.spellbar:SetStatusBarTexture("x")
     local r = ns.modules.castbars.TYPE_COLOR.interrupted
     assert(math.abs(TargetFrame.spellbar.__color[1] - r[1]) < 1e-3, "interrupted color not applied")
+    -- nothing moved before a target is shown
+    assert(TargetFrame.TargetFrameContent.TargetFrameContentMain.HealthBarsContainer.HealthBar:GetNumPoints() == 0,
+           "target bars moved before the frame was laid out")
+    TargetFrame.__shown = true
+    ns.modules.unitframes.AlignTarget()
     -- target health bar: player's size, right edge kept, top on the player's line
     local thb = TargetFrame.TargetFrameContent.TargetFrameContentMain.HealthBarsContainer.HealthBar
     local function at() local p, rel, rp, x, y = thb:GetPoint(1); return p, rel, rp, x, y end

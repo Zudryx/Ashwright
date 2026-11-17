@@ -262,6 +262,10 @@ function M.AlignTarget()
   if not num(pw, phh, pt, tr, tt, fr, ft) or pw <= 0 or phh <= 0 then return end
 
   if not th.__ashHome then
+    -- Learn where the game puts the bar only once a target is shown: before
+    -- the first target the frame hasn't laid itself out yet, and the bar's
+    -- spot then is wrong (it put the bars ~18 px too high).
+    if not (tf.IsVisible and tf:IsVisible()) then return end
     -- where the game put the bar, relative to the frame's top right
     th.__ashHome = { tr - fr, tt - ft }
     ns.Keep(th, "SetPoint", function(self)
@@ -352,7 +356,11 @@ local function hookAuras(frame)
   nudge()
 end
 
-local function realign() ns.Run("unitframes align target", M.AlignTarget) end
+-- after the game's own handlers have laid the frame out for the new target
+local function realign()
+  local run = function() ns.Run("unitframes align target", M.AlignTarget) end
+  if C_Timer and C_Timer.After then C_Timer.After(0, run) else run() end
+end
 
 function M.Enable()
   for _, u in ipairs(UNITS) do
