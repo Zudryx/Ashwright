@@ -81,6 +81,7 @@ local frames = {}
 function CreateFrame(kind, name, parent, template)
   local f = new(kind or "Frame", name)
   f.__parent = parent
+  f.__template = template
   frames[#frames + 1] = f
   return f
 end
@@ -352,6 +353,23 @@ do
   local tpb = LAYOUT == "classic" and TargetFrame.manabar or TargetFrame.TargetFrameContent.TargetFrameContentMain.ManaBar
   assert(tpb and tpb.__ashTrough, "target power bar has no trough")
 end
+-- panels are plain textures, never the backdrop template: its size math
+-- breaks on the secret sizes the game gives unit frames in a group
+for _, f in ipairs(frames) do
+  assert(not (f.__template and tostring(f.__template):find("Backdrop")), "a frame still uses the backdrop template")
+end
+do
+  local panel = (LAYOUT == "classic" and PlayerFrame or PlayerFrame).__ashPanel
+  assert(panel.bg and #panel.edges == 4 and panel.outer and #panel.outer.edges == 4, "player panel not built from textures")
+  -- a size the game makes secret: nothing in the panel may read it
+  for _, fr in ipairs({ panel, panel.outer }) do
+    fr.GetWidth = function() error("panel read its width") end
+    fr.GetHeight = function() error("panel read its height") end
+    fr.GetSize = function() error("panel read its size") end
+  end
+  panel:SetBackdropBorderColor(1, 0, 0); panel:SetBackdropColor(0, 0, 0, 0.5)
+end
+
 -- cast bars: art faded, flat fill, state colors (modern), panel
 do
   local cb = LAYOUT == "classic" and CastingBarFrame or PlayerCastingBarFrame

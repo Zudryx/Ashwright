@@ -91,14 +91,11 @@ local function styleBar(b)
     if not icon.__ashSlot then
       -- the slot follows the icon: the player bar hides its icon, and an
       -- empty slot would draw a stray outline beside the bar
-      local slot = CreateFrame("Frame", nil, bar, "BackdropTemplate")
+      local slot = ns.Box(bar, 1, false)
       slot:SetPoint("TOPLEFT", icon, "TOPLEFT", -1, 1)
       slot:SetPoint("BOTTOMRIGHT", icon, "BOTTOMRIGHT", 1, -1)
       slot:SetFrameLevel(math.max(bar:GetFrameLevel() - 1, 0))
-      if slot.SetBackdrop then
-        slot:SetBackdrop({ edgeFile = ns.WHITE, edgeSize = 1 })
-        slot:SetBackdropBorderColor(unpack(C.slotBorder))
-      end
+      slot:SetBackdropBorderColor(unpack(C.slotBorder))
       icon.__ashSlot = slot
       local function follow() slot:SetShown(icon:IsShown() and true or false) end
       follow()

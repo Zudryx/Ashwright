@@ -26,7 +26,7 @@ How it stays safe
 ]]
 
 local ADDON, ns = ...
-ns.VERSION = "0.1.11"
+ns.VERSION = "0.1.12"
 _G.Ashwright = ns
 
 local WHITE = "Interface\\Buttons\\WHITE8X8"
@@ -217,8 +217,40 @@ end
 -- panels and borders
 ---------------------------------------------------------------------------
 
-local function backdropFrame(parent)
-  local f = CreateFrame("Frame", nil, parent, BackdropTemplateMixin and "BackdropTemplate" or nil)
+-- A plain frame with a flat background and a border of four edge textures.
+-- Deliberately not the game's backdrop template: that recomputes its texture
+-- coordinates from the frame's size whenever the size changes, and when the
+-- game makes a size secret (unit frames in a group) that math errors out.
+-- Nothing here ever reads the frame's size.
+local function setColor(list, r, g, b, a)
+  for _, t in ipairs(list) do t:SetVertexColor(r, g, b, a or 1) end
+end
+
+function ns.Box(parent, px, withBg)
+  px = px or 1
+  local f = CreateFrame("Frame", nil, parent)
+  local edges = {}
+  if withBg ~= false then
+    f.bg = f:CreateTexture(nil, "BACKGROUND")
+    f.bg:SetTexture(WHITE)
+    f.bg:SetAllPoints(f)
+  end
+  local function edge(p1, p2, horizontal)
+    local t = f:CreateTexture(nil, "BORDER")
+    t:SetTexture(WHITE)
+    t:SetPoint(p1, f, p1)
+    t:SetPoint(p2, f, p2)
+    if horizontal then t:SetHeight(px) else t:SetWidth(px) end
+    edges[#edges + 1] = t
+  end
+  edge("TOPLEFT", "TOPRIGHT", true)
+  edge("BOTTOMLEFT", "BOTTOMRIGHT", true)
+  edge("TOPLEFT", "BOTTOMLEFT", false)
+  edge("TOPRIGHT", "BOTTOMRIGHT", false)
+  f.edges = edges
+  -- same names as the backdrop's, so callers recolor a box the same way
+  function f:SetBackdropColor(r, g, b, a) if self.bg then self.bg:SetVertexColor(r, g, b, a or 1) end end
+  function f:SetBackdropBorderColor(r, g, b, a) setColor(edges, r, g, b, a) end
   return f
 end
 
@@ -230,7 +262,7 @@ function ns.Panel(target, opts)
   local px = ns.Pixel(target)
   local pad = (opts.pad or 0) * 1
 
-  local f = backdropFrame(parent)
+  local f = ns.Box(parent, px)
   f:SetPoint("TOPLEFT", target, "TOPLEFT", -pad - px, pad + px)
   f:SetPoint("BOTTOMRIGHT", target, "BOTTOMRIGHT", pad + px, -pad - px)
   -- Draw order: [outer band] < [panel] < target. Frame levels cannot go below 0,
@@ -240,24 +272,18 @@ function ns.Panel(target, opts)
   local lvl = (target.GetFrameLevel and target:GetFrameLevel()) or 1
   local base = math.max(lvl - (ornate and 2 or 1), 0)
   f:SetFrameLevel(ornate and base + 1 or base)
-  if f.SetBackdrop then
-    f:SetBackdrop({ bgFile = WHITE, edgeFile = WHITE, edgeSize = px })
-    f:SetBackdropColor(unpack(opts.bg or ns.C.panel))
-    f:SetBackdropBorderColor(unpack(opts.border or ns.C.border))
-  end
+  f:SetBackdropColor(unpack(opts.bg or ns.C.panel))
+  f:SetBackdropBorderColor(unpack(opts.border or ns.C.border))
 
   if ornate then
     -- the B mockup's frame: a dark 3px band, then a thin iron line
-    local o = backdropFrame(parent)
+    local o = ns.Box(parent, px)
     o:SetPoint("TOPLEFT", f, "TOPLEFT", -4 * px, 4 * px)
     o:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", 4 * px, -4 * px)
     o:SetFrameLevel(base)
-    if o.SetBackdrop then
-      o:SetBackdrop({ bgFile = WHITE, edgeFile = WHITE, edgeSize = px })
-      o:SetBackdropColor(unpack(ns.C.outer))
-      o:SetBackdropBorderColor(unpack(ns.C.outerLine))
-    end
-    if f.SetBackdropBorderColor then f:SetBackdropBorderColor(unpack(ns.C.ornate)) end
+    o:SetBackdropColor(unpack(ns.C.outer))
+    o:SetBackdropBorderColor(unpack(ns.C.outerLine))
+    f:SetBackdropBorderColor(unpack(ns.C.ornate))
     f.outer = o
   end
   ns.Above(f, target)
