@@ -322,9 +322,60 @@ local function isAuraButton(f)
   return type(f) == "table" and f.Icon and (f.Cooldown or f.Count) and true or false
 end
 
+-- Forever keeps the target's buffs in a container of their own that is not
+-- inside the target frame, only anchored to it. Find frames anchored to the
+-- unit frame (or anything in it) that are not part of it and hold aura
+-- icons. Searching every frame is slow, so the answer is kept, and an empty
+-- answer is retried at most every few seconds.
+local function isInside(f, root)
+  local p, n = f, 0
+  while p and n < 15 do
+    if p == root then return true end
+    p = p.GetParent and p:GetParent(); n = n + 1
+  end
+  return false
+end
+
+local function holdsIcons(f)
+  if isAuraButton(f) then return true end
+  if not f.GetChildren then return false end
+  for _, c in ipairs({ f:GetChildren() }) do
+    if isAuraButton(c) or (type(c) == "table" and c.Icon and c.GetObjectType and c:GetObjectType() ~= "StatusBar") then
+      return true
+    end
+  end
+  return false
+end
+
+local containers, lastSearch = {}, {}
+function M.AuraContainers(frame, force)
+  if not frame then return {} end
+  local found = containers[frame]
+  if found and #found > 0 and not force then return found end
+  local now = GetTime and GetTime() or 0
+  if not force and lastSearch[frame] and now - lastSearch[frame] < 3 then return found or {} end
+  lastSearch[frame] = now
+  found = {}
+  if EnumerateFrames then
+    local f = EnumerateFrames()
+    while f do
+      if not f.__ashBox and not (f.IsForbidden and f:IsForbidden()) and not isInside(f, frame) then
+        local ok, _, rel = pcall(f.GetPoint, f, 1)
+        if ok and type(rel) == "table" and isInside(rel, frame) and holdsIcons(f) then
+          found[#found + 1] = f
+        end
+      end
+      f = EnumerateFrames(f)
+    end
+  end
+  containers[frame] = found
+  return found
+end
+
 local function auraFrames(frame)
   local list, seen = {}, {}
   local function add(a) if a and not seen[a] then seen[a] = true; list[#list + 1] = a end end
+  for _, c in ipairs(M.AuraContainers(frame)) do add(c) end
   if frame.auraPools and frame.auraPools.EnumerateActive then
     for a in frame.auraPools:EnumerateActive() do add(a) end
   end
@@ -362,24 +413,40 @@ function M.NudgeAuras(frame)
   local isAura = {}
   for _, a in ipairs(auras) do isAura[a] = true end
   for _, a in ipairs(auras) do
-    if a.GetNumPoints and a:GetNumPoints() == 1 then
-      local p, rel, rp, x, y = a:GetPoint(1)
-      if p and p:find("TOP") and rel and not isAura[rel] and num(x, y) then
-        -- the y the game chose: ours stays ours until the game sets a new one
-        if a.__ashSetY ~= y then a.__ashGameY = y end
-        local base = a.__ashGameY
-        local want
-        local ay = anchorY(rel, rp or p)
-        if num(edge, ay) then
-          want = math.min(base, math.floor(edge - AURA_GAP - ay))
-        else
-          want = base - AURA_FALLBACK
+    local n = a.GetNumPoints and a:GetNumPoints() or 0
+    local p, rel, rp, x, y
+    if n >= 1 then p, rel, rp, x, y = a:GetPoint(1) end
+    if p and p:find("TOP") and rel and not isAura[rel] and num(x, y) then
+      -- the y the game chose: ours stays ours until the game sets a new one
+      if a.__ashSetY ~= y then a.__ashGameY = y end
+      local base = a.__ashGameY
+      local want
+      local ay = anchorY(rel, rp or p)
+      if num(edge, ay) then
+        want = math.min(base, math.floor(edge - AURA_GAP - ay))
+      else
+        want = base - AURA_FALLBACK
+      end
+      if want ~= y then
+        -- every point moves by the same amount (a container can hang from two)
+        local pts, delta = {}, want - y
+        for i = 1, n do
+          local pp, r, rpp, px, py = a:GetPoint(i)
+          if not num(px, py) then pts = nil break end
+          pts[#pts + 1] = { pp, r, rpp, px, py + delta }
         end
-        if want ~= y then
+        if pts then
+          a.__ashPlacing = true
           a:ClearAllPoints()
-          a:SetPoint(p, rel, rp, x, want)
+          for _, pt in ipairs(pts) do a:SetPoint(pt[1], pt[2], pt[3], pt[4], pt[5]) end
+          a.__ashPlacing = nil
         end
-        a.__ashSetY = want
+      end
+      a.__ashSetY = want
+      -- the game re-placing it brings it back up; put it down again
+      if not a.__ashNudgeHook then
+        a.__ashNudgeHook = true
+        ns.Keep(a, "SetPoint", function(self) if not self.__ashPlacing and M.RealignSoon then M.RealignSoon() end end)
       end
     end
   end

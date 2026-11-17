@@ -82,6 +82,15 @@ methods.Show = function(s) s.__shown = true end
 methods.Hide = function(s) s.__shown = false end
 
 local frames = {}
+-- every frame, for EnumerateFrames (CreateFrame'd ones plus a few game ones)
+local gameFrames = {}
+function EnumerateFrames(prev)
+  local all = {}
+  for _, f in ipairs(frames) do all[#all + 1] = f end
+  for _, f in ipairs(gameFrames) do all[#all + 1] = f end
+  if prev == nil then return all[1] end
+  for i, f in ipairs(all) do if f == prev then return all[i + 1] end end
+end
 -- a stand-in for the game's secret values: indexing a table with one errors
 local SECRET = setmetatable({}, { __tostring = function() return "<secret>" end })
 function issecretvalue(v) return v == SECRET end
@@ -198,6 +207,14 @@ else
   tf.auraPools = { EnumerateActive = function() local l, i = { a1, a2 }, 0; return function() i = i + 1; return l[i] end end }
   tf.UpdateAuras = function() end
   tf.__auras = { a1, a2 }
+  -- Forever: the buffs live in a container outside the target frame, hung
+  -- from it by two points, holding the icons
+  local ac = new("Frame"); ac.__parent = UIParent
+  ac:SetPoint("TOPLEFT", tf, "BOTTOMLEFT", 5, 32); ac:SetPoint("TOPRIGHT", tf, "BOTTOMRIGHT", -5, 32)
+  local icon1 = new("Button"); icon1.Icon = new("Texture"); icon1.Cooldown = new("Frame")
+  ac.__children = { icon1 }
+  gameFrames[#gameFrames + 1] = ac
+  tf.__container = ac
   local pcb = new("StatusBar", "PlayerCastingBarFrame"); pcb.barType = "channel"; pcb.__iconHidden = true
   pcb.Border = new("Texture"); pcb.TextBorder = new("Texture"); pcb.Background = new("Texture")
   pcb.Text = new("FontString"); pcb.Icon = new("Texture"); pcb.Icon.__shown = false; pcb.Spark = new("Texture")
@@ -461,6 +478,12 @@ do
     TargetFrame:UpdateAuras()
     _, _, _, ax, ay = a1:GetPoint(1)
     assert(ay == 28, "auras moved twice: " .. tostring(ay))
+    -- the outside container moves too, both of its points by the same amount
+    local ac = TargetFrame.__container
+    local _, r1, _, x1, y1 = ac:GetPoint(1)
+    local _, r2, _, x2, y2 = ac:GetPoint(2)
+    assert(r1 == TargetFrame and y1 == 28 and r2 == TargetFrame and y2 == 28 and x1 == 5 and x2 == -5,
+           ("aura container not moved under the panel: %s %s"):format(tostring(y1), tostring(y2)))
     -- positions secret (in a group): auras move down a fixed 8 from the game's spot
     local outer = TargetFrame.__ashPanel.outer
     local savedBottom = outer.GetBottom

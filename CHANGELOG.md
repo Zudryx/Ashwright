@@ -2,6 +2,10 @@
 
 Each `## x.y.z` section becomes the release notes for that version.
 
+## 0.1.21
+- Target and focus buffs no longer overlap the frame. WoW Forever keeps them in a container outside the frame, hung under it; Ashwright now finds that container and moves it below the panel.
+- `/ash inspect target` lists that container.
+
 ## 0.1.20
 - `/ash inspect target` searches the whole target frame, and every frame the game names for target buffs, wherever it's attached.
 

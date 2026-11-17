@@ -26,7 +26,7 @@ How it stays safe
 ]]
 
 local ADDON, ns = ...
-ns.VERSION = "0.1.20"
+ns.VERSION = "0.1.21"
 _G.Ashwright = ns
 
 local WHITE = "Interface\\Buttons\\WHITE8X8"

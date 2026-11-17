@@ -191,6 +191,22 @@ function ns.Inspect(kind)
     end
     table.sort(named)
     out[#out + 1] = { path = "named target aura frames", text = #named > 0 and table.concat(named, ", ") or "none" }
+    local defaults = _G.TargetFrameAuraContainerDefaults
+    if type(defaults) == "table" then
+      local kv = {}
+      for k, v in pairs(defaults) do kv[#kv + 1] = tostring(k) .. "=" .. tostring(clean(v)) end
+      table.sort(kv)
+      out[#out + 1] = { path = "TargetFrameAuraContainerDefaults", text = table.concat(kv, ", ") }
+    end
+    -- frames anchored to the target frame from outside it (the aura container)
+    local uf = ns.modules.unitframes
+    local outside = uf and uf.AuraContainers and uf.AuraContainers(tf, true) or {}
+    out[#out + 1] = { path = "aura containers found", text = tostring(#outside) }
+    for n, c in ipairs(outside) do
+      out[#out + 1] = describe(c, "container" .. n)
+      local kids = { c:GetChildren() }
+      for m = 1, math.min(#kids, 3) do out[#out + 1] = describe(kids[m], "container" .. n .. ".c" .. m) end
+    end
     for n, k in ipairs(named) do
       if n <= 8 and type(_G[k]) == "table" and _G[k].GetObjectType then
         i = i + 1; out[#out + 1] = describe(_G[k], k)
