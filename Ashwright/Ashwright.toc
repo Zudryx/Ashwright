@@ -2,7 +2,7 @@
 ## Title: Ashwright
 ## Notes: A dark, minimal reskin of the default UI: flat bars, thin borders. /ash
 ## Author: Zudryx
-## Version: 0.1.9
+## Version: 0.1.10
 ## X-License: GPL-3.0-or-later
 ## SavedVariables: AshwrightDB
 

@@ -63,7 +63,8 @@ methods.GetBottom = function(s) return s.__rect and s.__rect[2] end
 methods.GetRight = function(s) return s.__rect and s.__rect[1] + s.__rect[3] end
 methods.GetTop = function(s) return s.__rect and s.__rect[2] + s.__rect[4] end
 methods.SetSize = function(s, w, h) s.__size = { w, h } end
-methods.GetWidth = function(s) return s.__size and s.__size[1] or 0 end
+methods.SetShown = function(s, v) s.__shown = v and true or false end
+methods.GetWidth = function(s) return (s.__size and s.__size[1]) or (s.__rect and s.__rect[3]) or 0 end
 methods.GetHeight = function(s) return (s.__size and s.__size[2]) or (s.__rect and s.__rect[4]) or 0 end
 methods.GetName = function(s) return s.__name end
 methods.GetNumPoints = function(s) return #(s.__points or {}) end
@@ -166,10 +167,18 @@ else
   local thc = new("Frame"); thc.HealthBar = thb; thb.__parent = thc
   thc:SetPoint("TOPLEFT", tf, "TOPLEFT", 10, -20)
   -- side by side, the target's bars 3 px higher than the player's
-  hbc.HealthBar.__rect = { 100, 480, 126, 20 }; thb.__rect = { 300, 483, 126, 20 }
-  local pcb = new("StatusBar", "PlayerCastingBarFrame"); pcb.barType = "channel"
+  -- player bars 124x18 (top 498); target bars 126x20, top 503, frame top-right at 482,540
+  hbc.HealthBar.__rect = { 100, 480, 124, 18 }; thb.__rect = { 300, 483, 126, 20 }
+  tf.__rect = { 250, 440, 232, 100 }
+  -- auras: the first hangs from the frame, the second from the first
+  local a1, a2 = new("Button"), new("Button")
+  a1:SetPoint("TOPLEFT", tf, "BOTTOMLEFT", 5, 32); a2:SetPoint("TOPLEFT", a1, "TOPRIGHT", 2, 0)
+  tf.auraPools = { EnumerateActive = function() local l, i = { a1, a2 }, 0; return function() i = i + 1; return l[i] end end }
+  tf.UpdateAuras = function() end
+  tf.__auras = { a1, a2 }
+  local pcb = new("StatusBar", "PlayerCastingBarFrame"); pcb.barType = "channel"; pcb.__iconHidden = true
   pcb.Border = new("Texture"); pcb.TextBorder = new("Texture"); pcb.Background = new("Texture")
-  pcb.Text = new("FontString"); pcb.Icon = new("Texture"); pcb.Spark = new("Texture")
+  pcb.Text = new("FontString"); pcb.Icon = new("Texture"); pcb.Icon.__shown = false; pcb.Spark = new("Texture")
   tf.spellbar = new("StatusBar", "TargetFrameSpellBar"); tf.spellbar.barType = "standard"
   tf.spellbar.Border = new("Texture"); tf.spellbar.Icon = new("Texture"); tf.spellbar.Text = new("FontString")
   tf.TargetFrameContent = { TargetFrameContentMain = { HealthBarsContainer = thc, ManaBar = tmb,
@@ -358,15 +367,31 @@ do
     TargetFrame.spellbar.barType = "interrupted"; TargetFrame.spellbar:SetStatusBarTexture("x")
     local r = ns.modules.castbars.TYPE_COLOR.interrupted
     assert(math.abs(TargetFrame.spellbar.__color[1] - r[1]) < 1e-3, "interrupted color not applied")
-    -- target bars lifted 3 px down to the player's line, from their own anchor
-    local thc = TargetFrame.TargetFrameContent.TargetFrameContentMain.HealthBarsContainer
-    local _, _, _, x, y = thc:GetPoint(1)
-    assert(x == 10 and y == -23, ("target bars not aligned: %s %s"):format(tostring(x), tostring(y)))
+    -- target health bar: player's size, right edge kept, top on the player's line
+    local thb = TargetFrame.TargetFrameContent.TargetFrameContentMain.HealthBarsContainer.HealthBar
+    local function at() local p, rel, rp, x, y = thb:GetPoint(1); return p, rel, rp, x, y end
+    local p, rel, rp, x, y = at()
+    assert(p == "TOPRIGHT" and rel == TargetFrame and rp == "TOPRIGHT" and x == -56 and y == -42,
+           ("target bars not aligned: %s %s %s"):format(tostring(p), tostring(x), tostring(y)))
+    assert(thb.__size[1] == 124 and thb.__size[2] == 18, "target bars not sized like the player's")
     -- the game now reports the moved bar; aligning again must not drift
-    TargetFrame.TargetFrameContent.TargetFrameContentMain.HealthBarsContainer.HealthBar.__rect[2] = 480
+    thb.__rect = { 302, 480, 124, 18 }
     ns.modules.unitframes.AlignTarget()
-    _, _, _, x, y = thc:GetPoint(1)
-    assert(y == -23, "target alignment drifted: " .. tostring(y))
+    p, rel, rp, x, y = at()
+    assert(x == -56 and y == -42, "target alignment drifted: " .. tostring(x) .. " " .. tostring(y))
+    -- stray outline: the icon slot hides with the hidden player cast bar icon
+    assert(PlayerCastingBarFrame.Icon.__ashSlot.__shown == false, "icon slot shown for a hidden icon")
+    -- auras slide under the panel: panel edge 470, frame bottom 440 -> y 28
+    TargetFrame.__ashPanel.outer.__rect = { 240, 470, 250, 80 }
+    TargetFrame:UpdateAuras()
+    local a1, a2 = TargetFrame.__auras[1], TargetFrame.__auras[2]
+    local _, _, _, ax, ay = a1:GetPoint(1)
+    assert(ax == 5 and ay == 28, ("target auras not moved under the panel: %s %s"):format(tostring(ax), tostring(ay)))
+    local _, r2, _, _, y2 = a2:GetPoint(1)
+    assert(r2 == a1 and y2 == 0, "second aura should still hang from the first")
+    TargetFrame:UpdateAuras()
+    _, _, _, ax, ay = a1:GetPoint(1)
+    assert(ay == 28, "auras moved twice: " .. tostring(ay))
   end
 end
 

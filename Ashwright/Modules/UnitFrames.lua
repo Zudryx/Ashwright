@@ -136,13 +136,12 @@ local function styleBar(b, kind, unit)
   ns.Each(function(fs) ns.Font(fs, "body") end, b.TextString, b.LeftText, b.RightText)
 end
 
--- Some frames' power bar is wider than the health bar (the target frame's
--- sticks out past both ends). Hang it under the health bar at the same width
--- so the two read as one block, and keep it there if the game re-anchors it.
+-- The power bar hangs directly under the health bar at the same width. The
+-- game's own layout lets them overlap by a couple of pixels (player) or makes
+-- the power bar wider (target), which shows once both bars are flat.
 local function alignPower(health, power)
-  if not (health and power and power.ClearAllPoints and health.GetWidth) then return end
-  local hw, pw = health:GetWidth(), power:GetWidth()
-  if not (hw and pw) or hw <= 0 or math.abs(hw - pw) < 1 then return end
+  if not (health and power and power.ClearAllPoints) or power.__ashAligned then return end
+  power.__ashAligned = true
   local function place(bar)
     if bar.__ashPlacing then return end
     bar.__ashPlacing = true
@@ -156,6 +155,7 @@ local function alignPower(health, power)
     if not bar.__ashPlacing then ns.Run("unitframes align power", place, bar) end
   end)
 end
+M.ALIGN_POWER = { player = true, target = true, focus = true }
 
 local function styleUnit(u)
   local frame, framePath = ns.Find("unitframes", u.key, unpack(u.frame))
@@ -171,7 +171,7 @@ local function styleUnit(u)
   local power = bar(u, frame, framePath, "power")
   styleBar(health, "health", u.unit)
   styleBar(power, "power", u.unit)
-  alignPower(health, power)
+  if M.ALIGN_POWER[u.key] then alignPower(health, power) end
 
   -- one panel behind both bars, like the mockup's frame body
   if health and not frame.__ashPanel then
@@ -225,72 +225,131 @@ local function styleUnit(u)
   end
 end
 
--- Lines the target's bars up with the player's when the two frames sit side
--- by side (their bars within a few pixels of each other). The game places the
--- two frames a couple of pixels apart, which shows once both have panels.
--- Only the bars move, inside the target frame; the frame itself stays where
--- Edit Mode put it. Frames placed further apart are left alone.
+-- Gives the target's bars the same size as yours and, when the two frames
+-- sit side by side (bars within a few pixels of each other), lines them up
+-- with yours. The game draws the target's bars 2 px wider and taller and a
+-- couple of pixels off, which shows once both frames have panels. Only the
+-- bars move, inside the target frame, keeping their right edge next to the
+-- portrait; the frame itself stays where Edit Mode put it.
 local ALIGN_RANGE = 8
 
-local function healthOf(key)
-  for _, u in ipairs(UNITS) do
-    if u.key == key then
-      local frame, path = ns.Path(u.frame[1]) or ns.Path(u.frame[2] or ""), u.frame[1]
-      if frame then return bar(u, frame, path, "health") end
-    end
-  end
+local function unitDef(key)
+  for _, u in ipairs(UNITS) do if u.key == key then return u end end
 end
 
--- the frame to move: the modern UI keeps the health bar in a container with
--- its text, so the container moves; otherwise the bar itself
-local function moverOf(hb)
-  local parent = hb.GetParent and hb:GetParent()
-  if parent and parent.HealthBar == hb and parent ~= _G.TargetFrame then return parent end
-  return hb
+local function barsOf(key)
+  local u = unitDef(key)
+  local frame = u and (ns.Path(u.frame[1]) or (u.frame[2] and ns.Path(u.frame[2])))
+  if not frame then return end
+  return frame, bar(u, frame, u.frame[1], "health"), bar(u, frame, u.frame[1], "power")
 end
 
-local function applyShift(mover, shift)
-  if not mover.__ashOrig then return end
-  mover.__ashPlacing = true
-  mover:ClearAllPoints()
-  for _, pt in ipairs(mover.__ashOrig) do
-    mover:SetPoint(pt[1], pt[2], pt[3], pt[4], pt[5] + shift)
+local function num(...)
+  for i = 1, select("#", ...) do
+    local v = select(i, ...)
+    if type(v) ~= "number" or ns.isSecret(v) then return false end
   end
-  mover.__ashPlacing = nil
-  mover.__ashShift = shift
-end
-
-local function capture(mover)
-  local pts = {}
-  for i = 1, (mover.GetNumPoints and mover:GetNumPoints() or 0) do
-    local p, rel, rp, x, y = mover:GetPoint(i)
-    if p then pts[#pts + 1] = { p, rel, rp, x or 0, y or 0 } end
-  end
-  if #pts > 0 then mover.__ashOrig = pts end
+  return true
 end
 
 function M.AlignTarget()
   if not ns.db.alignTarget then return end
-  local ph, th = healthOf("player"), healthOf("target")
-  if not (ph and th) then return end
-  local mover = moverOf(th)
-  if not mover.__ashOrig then
-    capture(mover)
-    mover.__ashShift = 0
-    -- the game re-anchoring the bars resets them; take the new spot as home
-    ns.Keep(mover, "SetPoint", function(self)
+  local _, ph, pp = barsOf("player")
+  local tf, th, tp = barsOf("target")
+  if not (ph and th and tf and th.ClearAllPoints) then return end
+  local pw, phh, pt = ph:GetWidth(), ph:GetHeight(), ph:GetTop()
+  local tr, tt, fr, ft = th:GetRight(), th:GetTop(), tf:GetRight(), tf:GetTop()
+  if not num(pw, phh, pt, tr, tt, fr, ft) or pw <= 0 or phh <= 0 then return end
+
+  if not th.__ashHome then
+    -- where the game put the bar, relative to the frame's top right
+    th.__ashHome = { tr - fr, tt - ft }
+    ns.Keep(th, "SetPoint", function(self)
       if self.__ashPlacing then return end
-      capture(self); self.__ashShift = 0
+      self.__ashHome = nil   -- the game re-laid the frame out: start over from there
       ns.Run("unitframes align target", M.AlignTarget)
     end)
   end
-  local pt, tt = ph:GetTop(), th:GetTop()
-  if not (pt and tt) or ns.isSecret(pt) or ns.isSecret(tt) then return end
-  local home = tt - (mover.__ashShift or 0)
-  local shift = pt - home
+  local home = th.__ashHome
+  local shift = pt - (ft + home[2])
   if math.abs(shift) > ALIGN_RANGE then shift = 0 end
   shift = math.floor(shift + 0.5)
-  if shift ~= mover.__ashShift then applyShift(mover, shift) end
+
+  th.__ashPlacing = true
+  th:ClearAllPoints()
+  th:SetPoint("TOPRIGHT", tf, "TOPRIGHT", home[1], home[2] + shift)
+  th:SetSize(pw, phh)
+  th.__ashPlacing = nil
+  if pp and tp and tp.SetHeight then
+    local h = pp:GetHeight()
+    if num(h) and h > 0 then tp:SetHeight(h) end
+  end
+end
+
+-- Buffs and debuffs under the target and focus frames start right below the
+-- game's frame art, which sits higher than the panel's bottom edge. The first
+-- aura of each group is anchored to the frame; moving it moves its row and
+-- the rows under it, which hang from it.
+local AURA_GAP = 2
+
+local function auraFrames(frame)
+  local list = {}
+  if frame.auraPools and frame.auraPools.EnumerateActive then
+    for a in frame.auraPools:EnumerateActive() do list[#list + 1] = a end
+  end
+  local name = frame.GetName and frame:GetName()
+  if #list == 0 and name then
+    for _, kind in ipairs({ "Buff", "Debuff" }) do
+      for i = 1, 40 do
+        local a = _G[name .. kind .. i]
+        if not a then break end
+        list[#list + 1] = a
+      end
+    end
+  end
+  return list
+end
+
+local function anchorY(rel, rp)
+  if not (rel and rel.GetTop) then return end
+  if rp:find("BOTTOM") then return rel:GetBottom() end
+  if rp:find("TOP") then return rel:GetTop() end
+  local t, b = rel:GetTop(), rel:GetBottom()
+  return t and b and (t + b) / 2
+end
+
+function M.NudgeAuras(frame)
+  local panel = frame and frame.__ashPanel
+  if not panel then return end
+  local edge = (panel.outer or panel):GetBottom()
+  if not num(edge) then return end
+  local auras = auraFrames(frame)
+  local isAura = {}
+  for _, a in ipairs(auras) do isAura[a] = true end
+  for _, a in ipairs(auras) do
+    if a.GetNumPoints and a:GetNumPoints() == 1 then
+      local p, rel, rp, x, y = a:GetPoint(1)
+      if p and p:find("TOP") and rel and not isAura[rel] then
+        local ay = anchorY(rel, rp or p)
+        if num(ay, y) then
+          local want = edge - AURA_GAP - ay   -- the y that puts its top under the panel
+          if y > want then
+            a:ClearAllPoints()
+            a:SetPoint(p, rel, rp, x, math.floor(want))
+          end
+        end
+      end
+    end
+  end
+end
+
+local function hookAuras(frame)
+  if not frame or frame.__ashAuras then return end
+  frame.__ashAuras = true
+  local function nudge() ns.Guard("unitframes auras", M.NudgeAuras, frame) end
+  ns.Each(function(m) if frame[m] then hooksecurefunc(frame, m, nudge) end end,
+          "UpdateAuras", "UpdateAuraPositions")
+  nudge()
 end
 
 local function realign() ns.Run("unitframes align target", M.AlignTarget) end
@@ -307,4 +366,9 @@ function M.Enable()
   local em = _G.EditModeManagerFrame
   if em and em.HookScript then em:HookScript("OnHide", realign) end
   realign()
+  hookAuras(_G.TargetFrame)
+  hookAuras(_G.FocusFrame)
+  if _G.TargetFrame_UpdateAuras then
+    hooksecurefunc("TargetFrame_UpdateAuras", function(f) ns.Guard("unitframes auras", M.NudgeAuras, f) end)
+  end
 end
