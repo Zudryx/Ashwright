@@ -98,7 +98,10 @@ SlashCmdList.ASHWRIGHT = function(msg)
     ns.db.nameOffset = n
     ns.Say("unit frame names lifted " .. n .. " px. /reload to apply.")
   elseif cmd == "inspect" then
-    ns.Inspect(rest ~= "" and rest:lower() or "target")
+    -- guarded: a problem in the record goes to /ash errors, not a game error
+    if not ns.Guard("inspect", ns.Inspect, rest ~= "" and rest:lower() or "target") then
+      ns.Say("inspect hit a problem; /ash errors shows it.")
+    end
   elseif cmd == "chatpanel" then
     if rest ~= "on" and rest ~= "off" then ns.Say("usage: /ash chatpanel on|off") return end
     ns.db.chatPanel = rest == "on"

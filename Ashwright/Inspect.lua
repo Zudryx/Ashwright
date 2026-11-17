@@ -39,8 +39,11 @@ local function describe(o, path)
     for i = 1, n do
       local p, rel, rp, x, y = ns.safe(o.GetPoint, o, i)
       local relName = rel and (ns.safe(rel.GetDebugName, rel) or ns.safe(rel.GetName, rel)) or "?"
-      pts[#pts + 1] = ("%s %s %s %s %s"):format(tostring(p), tostring(clean(relName)), tostring(rp),
-                                               tostring(clean(x)), tostring(clean(y)))
+      -- every part can be secret (a whole anchor is, on some unit frame text);
+      -- clean() turns each into the word "secret" before it is joined
+      local line = ("%s %s %s %s %s"):format(tostring(clean(p)), tostring(clean(relName)), tostring(clean(rp)),
+                                             tostring(clean(x)), tostring(clean(y)))
+      pts[#pts + 1] = ns.isSecret(line) and "secret" or line
     end
     t.points = table.concat(pts, " | ")
   end

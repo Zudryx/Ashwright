@@ -572,7 +572,18 @@ local zoom = LAYOUT == "modern" and Minimap.ZoomIn or MinimapZoomIn
 zoom:SetAlpha(1)
 assert(zoom.__alpha == 0, "zoom button came back")
 
+-- a text whose whole anchor is secret (the target's health text in a group)
+local secretText = new("FontString")
+secretText.__points = { { SECRET, SECRET, SECRET, SECRET, SECRET } }
+local xpRoot = _G.MainStatusTrackingBarManager or _G.MainMenuExpBar
+xpRoot.__regions = xpRoot.__regions or {}
+table.insert(xpRoot.__regions, secretText)
 SlashCmdList.ASHWRIGHT("inspect target"); SlashCmdList.ASHWRIGHT("inspect xp"); SlashCmdList.ASHWRIGHT("inspect nope")
+for _, e in ipairs(AshwrightDB.inspect.xp.entries) do
+  for k, v in pairs(e) do
+    assert(not tostring(v):find("<secret>", 1, true), "inspect let a secret through in " .. k .. ": " .. tostring(v))
+  end
+end
 SlashCmdList.ASHWRIGHT("nameoffset 6"); SlashCmdList.ASHWRIGHT("nameoffset 99")
 assert(AshwrightDB.inspect and AshwrightDB.inspect.target and #AshwrightDB.inspect.target.entries > 0, "inspect target not saved")
 assert(ChatFrame1.__ashPanel, "chat panel missing")
