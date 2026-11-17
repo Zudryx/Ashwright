@@ -89,6 +89,11 @@ local TARGETS = {
     local container = bar.GetParent and bar:GetParent()
     return container or bar, "health bar container", 2, tf.__ashPanel
   end,
+  plate = function()
+    local plate = C_NamePlate and C_NamePlate.GetNamePlateForUnit and C_NamePlate.GetNamePlateForUnit("target")
+    if not plate then return nil, "no nameplate for your target (target something with its nameplate showing)" end
+    return plate, "target's nameplate", 4
+  end,
   xp = function()
     local m = _G.MainStatusTrackingBarManager or _G.StatusTrackingBarManager or _G.MainMenuExpBar
     if not m then return nil, "no XP bar" end
@@ -98,7 +103,7 @@ local TARGETS = {
 
 function ns.Inspect(kind)
   local get = TARGETS[kind]
-  if not get then ns.Say("usage: /ash inspect target | xp") return end
+  if not get then ns.Say("usage: /ash inspect target | xp | plate") return end
   local root, label, depth, ours = get()
   if not root then ns.Say(label) return end
   local out = {}

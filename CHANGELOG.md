@@ -2,6 +2,10 @@
 
 Each `## x.y.z` section becomes the release notes for that version.
 
+## 0.1.18
+- Nameplates: the game's rounded border and gloss are removed from the health bar, so only the flat bar on its thin dark frame is left. Heal prediction still shows.
+- `/ash inspect plate` records what's drawn on your target's nameplate.
+
 ## 0.1.17
 - The rested-XP stripe stays dim: the game was turning it fully solid.
 - `/ash inspect target` looks for the target's buffs in more places and lists everything attached to the target frame.

@@ -265,6 +265,14 @@ local function makePlate(token)
   local p = new("Frame"); p.namePlateUnitToken = token
   local uf = new("Button"); p.UnitFrame = uf
   local hb = bar(); hb.border = new("Texture")
+  -- the rounded border is a frame of edge pieces; a gloss sits on the bar;
+  -- the heal prediction bar is a frame inside the bar and must stay
+  hb.Frame = new("Frame"); hb.Frame.Left = new("Texture"); hb.Frame.Right = new("Texture")
+  hb.Frame.__regions = { hb.Frame.Left, hb.Frame.Right }
+  hb.Gloss = new("Texture"); hb.__regions = { hb:GetStatusBarTexture(), hb.Gloss }
+  hb.myHealPrediction = new("Frame"); hb.myHealPrediction.Fill = new("Texture")
+  hb.myHealPrediction.__regions = { hb.myHealPrediction.Fill }
+  hb.__children = { hb.Frame, hb.myHealPrediction }
   if LAYOUT == "modern" then uf.HealthBarsContainer = { healthBar = hb } else uf.healthBar = hb end
   uf.castBar = bar(); uf.name = new("FontString")
   plates[token] = p
@@ -617,6 +625,10 @@ inCombat = false
 local phb = LAYOUT == "modern" and p1.UnitFrame.HealthBarsContainer.healthBar or p1.UnitFrame.healthBar
 assert(phb.__tex == ns.WHITE, "nameplate bar not flat")
 assert(phb.border.__alpha == 0, "nameplate border not hidden")
+assert(phb.Frame.Left.__shown == false and phb.Frame.Right.__shown == false, "nameplate rounded border still drawn")
+assert(phb.Gloss.__shown == false, "nameplate gloss still drawn")
+assert(phb:GetStatusBarTexture().__shown ~= false, "nameplate fill was hidden")
+assert(phb.myHealPrediction.Fill.__shown ~= false, "heal prediction was hidden")
 
 -- slash commands and scan
 SlashCmdList.ASHWRIGHT("module minimap off")

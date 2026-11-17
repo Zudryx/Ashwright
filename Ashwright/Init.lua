@@ -53,7 +53,7 @@ local HELP = {
   "/ash module <name> on | off - unitframes, actionbars, castbars, minimap, chat, nameplates, tooltip (needs /reload)",
   "/ash ornate on | off - double iron border on the player frame, action bars and minimap (needs /reload)",
   "/ash nameoffset <px> - how far unit frame names sit above the bars (default 4, needs /reload)",
-  "/ash inspect target | xp - record what is drawn on the target health bar or XP bar, for troubleshooting",
+  "/ash inspect target | xp | plate - record what is drawn on the target frame, XP bar or your target's nameplate, for troubleshooting",
   "/ash chatpanel on | off - dark panel behind chat windows (needs /reload)",
   "/ash aligntarget on | off - line the target's bars up with yours when side by side",
   "/ash accent <hex> - accent color, e.g. /ash accent c9a75c (needs /reload)",

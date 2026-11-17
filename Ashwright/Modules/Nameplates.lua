@@ -49,12 +49,30 @@ local function stylePlate(plate)
           or "UnitFrame.HealthBarsContainer.healthBar")
 
   ns.FlatFill(hb)
-  -- Blizzard's own plate border and background
-  local border = hb.border or hb.Border
-  if border then
-    if border.GetObjectType and border:GetObjectType() == "Texture" then ns.Kill(border) else ns.KillTextures(border) end
+  -- The game's own plate art: the rounded border (a frame of edge pieces on
+  -- the bar), the background and the glossy overlays. Everything drawn on
+  -- the bar except its fill goes; heal and absorb bars (frames of their own,
+  -- inside the bar) are left alone.
+  local function sweep(f, depth)
+    if not f or f.__ashBox or depth > 2 then return end
+    if f.GetRegions then
+      local fill = f.GetStatusBarTexture and f:GetStatusBarTexture()
+      for _, r in ipairs({ f:GetRegions() }) do
+        if r ~= fill and r.GetObjectType and r:GetObjectType() == "Texture" and not r.__ashFlat then ns.Kill(r, true) end
+      end
+    end
+    if f.GetChildren then
+      for _, c in ipairs({ f:GetChildren() }) do
+        local key = ""
+        for k, v in pairs(f) do if v == c and type(k) == "string" then key = k:lower() break end end
+        local isBar = key:find("predict") or key:find("absorb") or key:find("heal")
+        if not isBar then sweep(c, depth + 1) end
+      end
+    end
   end
-  ns.Kill(hb.background or hb.Background)
+  sweep(hb, 1)
+  ns.Each(function(b) if b.GetObjectType and b:GetObjectType() == "Texture" then ns.Kill(b, true) else sweep(b, 1) end end,
+          hb.border, hb.Border, hb.background, hb.Background)
   styled[plate] = ns.Panel(hb, { pad = 0, bg = C.healthBg, border = C.barBorder })
 
   local cb = castBar(uf)
