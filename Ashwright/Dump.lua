@@ -74,30 +74,40 @@ end
 
 function ns.Dump()
   if not EnumerateFrames then ns.Say("this client can't list its frames.") return end
-  local lines, frames, skipped = {}, 0, 0
+  local lines, frames, skipped, unsure, hidden = {}, 0, 0, 0, 0
+  local function record(f, mark)
+    local good = pcall(function()
+      lines[#lines + 1] = mark .. frameLine(f):sub(2)
+      for _, r in ipairs({ f:GetRegions() }) do
+        local shown = ns.safe(r.IsShown, r)
+        if shown ~= false then lines[#lines + 1] = regionLine(r) end
+      end
+    end)
+    if good then frames = frames + 1 else skipped = skipped + 1 end
+  end
   local f = EnumerateFrames()
   while f and #lines < MAX_LINES do
     local forbidden = f.IsForbidden and f:IsForbidden()
-    local ok, visible = false, false
-    if not forbidden then ok, visible = pcall(f.IsVisible, f) end
-    if ok and visible == true then
-      local good = pcall(function()
-        lines[#lines + 1] = frameLine(f)
-        for _, r in ipairs({ f:GetRegions() }) do
-          local shown = ns.safe(r.IsShown, r)
-          if shown ~= false then lines[#lines + 1] = regionLine(r) end
-        end
-      end)
-      if good then frames = frames + 1 else skipped = skipped + 1 end
-    elseif forbidden then
+    if forbidden == true then
       skipped = skipped + 1
+    else
+      local ok, visible = pcall(f.IsVisible, f)
+      if ok and visible == true then
+        record(f, "F")
+      elseif ok and visible == false then
+        hidden = hidden + 1
+      else
+        -- the game would not say whether it is shown (secret or error): keep it, marked F?
+        unsure = unsure + 1
+        record(f, "F?")
+      end
     end
     f = EnumerateFrames(f)
   end
-  ns.db.dump = { at = ns.safe(GetServerTime), addon = ns.VERSION, frames = frames, skipped = skipped,
+  ns.db.dump = { at = ns.safe(GetServerTime), addon = ns.VERSION, frames = frames, skipped = skipped, unsure = unsure, hidden = hidden,
                  truncated = (#lines >= MAX_LINES) or nil, lines = lines }
-  ns.Say(("dump: %d visible frames recorded (%d lines%s). /reload or log out, then send WTF/.../SavedVariables/Ashwright.lua.")
-    :format(frames, #lines, #lines >= MAX_LINES and ", stopped at the limit" or ""))
+  ns.Say(("dump: %d frames recorded, %d of them with secret visibility (%d lines%s). /reload or log out, then send WTF/.../SavedVariables/Ashwright.lua.")
+    :format(frames, unsure, #lines, #lines >= MAX_LINES and ", stopped at the limit" or ""))
 end
 
 function ns.ClearDump()

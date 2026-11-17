@@ -628,8 +628,17 @@ local xpRoot = _G.MainStatusTrackingBarManager or _G.MainMenuExpBar
 xpRoot.__regions = xpRoot.__regions or {}
 table.insert(xpRoot.__regions, secretText)
 SlashCmdList.ASHWRIGHT("inspect target"); SlashCmdList.ASHWRIGHT("inspect xp"); SlashCmdList.ASHWRIGHT("inspect nope")
--- /ash dump: every visible frame, secrets written as "secret"
+-- /ash dump: every visible frame, secrets written as "secret"; a frame whose
+-- visibility is secret (target buffs in the game) is kept, marked F?
+local secretVis = new("Button"); secretVis.__name = "SecretVisBuff"
+secretVis.IsVisible = function() return SECRET end
+gameFrames[#gameFrames + 1] = secretVis
 SlashCmdList.ASHWRIGHT("dump")
+local sawSecretVis = false
+for _, line in ipairs(AshwrightDB.dump.lines) do
+  if line:find("^F%? SecretVisBuff") then sawSecretVis = true end
+end
+assert(sawSecretVis and AshwrightDB.dump.unsure >= 1, "dump dropped a frame with secret visibility")
 assert(AshwrightDB.dump and AshwrightDB.dump.frames > 0 and #AshwrightDB.dump.lines > 0, "dump recorded nothing")
 for _, line in ipairs(AshwrightDB.dump.lines) do
   assert(type(line) == "string" and not line:find("<secret>", 1, true), "dump let a secret through: " .. tostring(line))

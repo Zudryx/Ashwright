@@ -22,7 +22,7 @@ def load(path):
     out = []
     for m in re.finditer(r'"((?:[^"\\]|\\.)*)",?\n', body):
         s = m.group(1).encode().decode("unicode_escape")
-        if not (s.startswith("F ") or s.startswith("  ")):
+        if not (s.startswith("F") or s.startswith("  ")):
             break
         out.append(s)
     return out
@@ -30,9 +30,9 @@ def load(path):
 def frames(lines):
     cur = None
     for s in lines:
-        if s.startswith("F "):
+        if s.startswith("F ") or s.startswith("F? "):
             cur = {"line": s, "art": []}
-            parts = s[2:].split(" | ")
+            parts = s.split(" ", 1)[1].split(" | ")
             cur["name"] = parts[0]
             m = re.match(r"(-?[\d.]+|secret|-),(-?[\d.]+|secret|-) (-?[\d.]+|secret|-)x(-?[\d.]+|secret|-)", parts[4] if len(parts) > 4 else "")
             cur["rect"] = tuple(float(v) if re.match(r"-?[\d.]+$", v) else None for v in m.groups()) if m else None

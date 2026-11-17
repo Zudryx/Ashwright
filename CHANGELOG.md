@@ -2,6 +2,9 @@
 
 Each `## x.y.z` section becomes the release notes for that version.
 
+## 0.1.24
+- `/ash dump` now keeps frames the game won't say are shown or hidden (it answers with a secret). These were dropped before, which left the target's buffs out of the dump. They're marked `F?`, and the count is shown when the dump finishes.
+
 ## 0.1.23
 - `/ash dump` records everything on screen at once: every visible frame (not just the ones Ashwright knows), with its parent, position, what it hangs from, and its art and text. One dump answers what any piece of the screen is, so fixes come from data. `/ash dump clear` removes it from your saved settings.
 
