@@ -107,17 +107,26 @@ function ns.Inspect(kind)
     out[#out + 1] = describe(ours, "ashwright panel")
     if ours.outer then out[#out + 1] = describe(ours.outer, "ashwright panel outer") end
   end
-  -- the buffs and debuffs under the target frame
+  -- the buffs and debuffs under the target frame, and how the game keeps them
   if kind == "target" and _G.TargetFrame then
     local tf, i = _G.TargetFrame, 0
-    if tf.auraPools and tf.auraPools.EnumerateActive then
-      for a in tf.auraPools:EnumerateActive() do i = i + 1; out[#out + 1] = describe(a, "aura" .. i) end
+    local pools = tf.auraPools
+    out[#out + 1] = { path = "aura source",
+                      text = pools and ("auraPools" .. (pools.EnumerateActive and "" or " (no EnumerateActive)")) or "no auraPools" }
+    if pools and pools.EnumerateActive then
+      for a in pools:EnumerateActive() do i = i + 1; out[#out + 1] = describe(a, "aura" .. i) end
     end
-    if i == 0 and tf.GetChildren then
-      for _, c in ipairs({ tf:GetChildren() }) do
-        if c.Icon then i = i + 1; out[#out + 1] = describe(c, "aura?" .. i) end
+    -- buttons with an icon, one and two levels down (not the cast bar)
+    local function scan(f, depth, path)
+      if depth > 2 or not f.GetChildren then return end
+      for n, c in ipairs({ f:GetChildren() }) do
+        local t = ns.safe(c.GetObjectType, c)
+        if c.Icon and t ~= "StatusBar" then i = i + 1; out[#out + 1] = describe(c, path .. ".c" .. n .. " (icon)") end
+        scan(c, depth + 1, path .. ".c" .. n)
       end
     end
+    if i == 0 then scan(tf, 1, "TargetFrame") end
+    out[#out + 1] = { path = "aura count", text = tostring(i) }
   end
   ns.db.inspect = ns.db.inspect or {}
   ns.db.inspect[kind] = { at = ns.safe(GetServerTime), addon = ns.VERSION, entries = out }

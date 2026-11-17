@@ -2,6 +2,9 @@
 
 Each `## x.y.z` section becomes the release notes for that version.
 
+## 0.1.16
+- `/ash inspect target` records how the game keeps the target's buffs and finds them even when they aren't where it looked before, for fixing buffs that overlap the target frame.
+
 ## 0.1.15
 First release. Ashwright gives the WoW Forever default UI a dark, minimal look: flat bars, thin iron borders, crimson health, and a double iron frame on the pieces that matter most. It only changes how the game's own frames look.
 
