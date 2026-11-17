@@ -37,8 +37,13 @@ local ART = { "Border", "TextBorder", "Background", "Flash", "BorderShield", "Sh
               "ChargeGlow", "BaseGlow" }
 local NAMED_ART = { "Border", "Flash", "BorderShield" }
 
+-- In a group the game keeps the target's and focus's cast state secret; a
+-- secret can't be used to look anything up, so those bars show the plain
+-- cast color.
 local function recolor(bar)
-  local c = bar.barType and TYPE_COLOR[bar.barType]
+  local t = bar.barType
+  if t == nil then return end
+  local c = ns.isSecret(t) and TYPE_COLOR.standard or TYPE_COLOR[t]
   if c then bar:SetStatusBarColor(c[1], c[2], c[3]) end
 end
 

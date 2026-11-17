@@ -136,26 +136,6 @@ local function styleBar(b, kind, unit)
   ns.Each(function(fs) ns.Font(fs, "body") end, b.TextString, b.LeftText, b.RightText)
 end
 
--- The power bar hangs directly under the health bar at the same width. The
--- game's own layout lets them overlap by a couple of pixels (player) or makes
--- the power bar wider (target), which shows once both bars are flat.
-local function alignPower(health, power)
-  if not (health and power and power.ClearAllPoints) or power.__ashAligned then return end
-  power.__ashAligned = true
-  local function place(bar)
-    if bar.__ashPlacing then return end
-    bar.__ashPlacing = true
-    bar:ClearAllPoints()
-    bar:SetPoint("TOPLEFT", health, "BOTTOMLEFT", 0, 0)
-    bar:SetPoint("TOPRIGHT", health, "BOTTOMRIGHT", 0, 0)
-    bar.__ashPlacing = nil
-  end
-  ns.Run("unitframes align power", place, power)
-  ns.Keep(power, "SetPoint", function(bar)
-    if not bar.__ashPlacing then ns.Run("unitframes align power", place, bar) end
-  end)
-end
-M.ALIGN_POWER = { player = true, target = true, focus = true }
 
 local function styleUnit(u)
   local frame, framePath = ns.Find("unitframes", u.key, unpack(u.frame))
@@ -171,7 +151,6 @@ local function styleUnit(u)
   local power = bar(u, frame, framePath, "power")
   styleBar(health, "health", u.unit)
   styleBar(power, "power", u.unit)
-  if M.ALIGN_POWER[u.key] then alignPower(health, power) end
 
   -- one panel behind both bars, like the mockup's frame body
   if health and not frame.__ashPanel then
@@ -225,13 +204,22 @@ local function styleUnit(u)
   end
 end
 
--- Gives the target's bars the same size as yours and, when the two frames
--- sit side by side (bars within a few pixels of each other), lines them up
--- with yours. The game draws the target's bars 2 px wider and taller and a
--- couple of pixels off, which shows once both frames have panels. Only the
--- bars move, inside the target frame, keeping their right edge next to the
--- portrait; the frame itself stays where Edit Mode put it.
+-- Bar layout for the player, target and focus frames.
+--
+-- The power bar sits right under the health bar at the same width (the game
+-- lets them overlap by 2 px on the player frame and makes the target's power
+-- bar wider). The target's bars take the player's size and, when the two
+-- frames sit side by side, line up with the player's bars.
+--
+-- Both bars are pinned to the unit frame itself, never to each other: the
+-- game positions some of its own bar containers off the power bar, so a power
+-- bar hung under the health bar made a loop (a "C stack overflow", and a
+-- target frame that vanished on every other target). Where the game puts the
+-- bars is measured once the frame is shown and laid out, and measured again
+-- whenever the game moves a bar itself.
 local ALIGN_RANGE = 8
+local LAYOUT_KEYS = { "player", "target", "focus" }
+M.LAYOUT_KEYS = LAYOUT_KEYS
 
 local function unitDef(key)
   for _, u in ipairs(UNITS) do if u.key == key then return u end end
@@ -252,47 +240,74 @@ local function num(...)
   return true
 end
 
-function M.AlignTarget()
-  if not ns.db.alignTarget then return end
-  local _, ph, pp = barsOf("player")
-  local tf, th, tp = barsOf("target")
-  if not (ph and th and tf and th.ClearAllPoints) then return end
-  local pw, phh, pt = ph:GetWidth(), ph:GetHeight(), ph:GetTop()
-  local tr, tt, fr, ft = th:GetRight(), th:GetTop(), tf:GetRight(), tf:GetTop()
-  if not num(pw, phh, pt, tr, tt, fr, ft) or pw <= 0 or phh <= 0 then return end
-
-  if not th.__ashHome then
-    -- Learn where the game puts the bar only once a target is shown: before
-    -- the first target the frame hasn't laid itself out yet, and the bar's
-    -- spot then is wrong (it put the bars ~18 px too high).
-    if not (tf.IsVisible and tf:IsVisible()) then return end
-    -- where the game put the bar, relative to the frame's top right
-    th.__ashHome = { tr - fr, tt - ft }
-    ns.Keep(th, "SetPoint", function(self)
-      if self.__ashPlacing then return end
-      -- The game re-laid the frame out: learn the new spot, but only once it
-      -- has finished. Its layout sets several points in a row; stepping in
-      -- after the first one left the bar with conflicting points, and it
-      -- vanished on every other target.
-      self.__ashHome = nil
-      M.RealignSoon()
-    end)
-  end
-  local home = th.__ashHome
-  local shift = pt - (ft + home[2])
-  if math.abs(shift) > ALIGN_RANGE then shift = 0 end
-  shift = math.floor(shift + 0.5)
-
-  th.__ashPlacing = true
-  th:ClearAllPoints()
-  th:SetPoint("TOPRIGHT", tf, "TOPRIGHT", home[1], home[2] + shift)
-  th:SetSize(pw, phh)
-  th.__ashPlacing = nil
-  if pp and tp and tp.SetHeight then
-    local h = pp:GetHeight()
-    if num(h) and h > 0 then tp:SetHeight(h) end
-  end
+local function measure(frame, hb, pb)
+  local fl, fr, ft = frame:GetLeft(), frame:GetRight(), frame:GetTop()
+  local hl, hr, ht, hbot = hb:GetLeft(), hb:GetRight(), hb:GetTop(), hb:GetBottom()
+  if not num(fl, fr, ft, hl, hr, ht, hbot) or hr - hl <= 0 or ht - hbot <= 0 then return end
+  local ph = pb and pb.GetHeight and pb:GetHeight()
+  return { left = hl - fl, right = hr - fr, top = ht - ft, w = hr - hl, h = ht - hbot,
+           ph = (num(ph) and ph > 0) and ph or nil }
 end
+
+local relayoutSoon   -- set below
+
+local function watch(bar, hb)
+  if not bar or bar.__ashWatched then return end
+  bar.__ashWatched = true
+  ns.Keep(bar, "SetPoint", function(self)
+    if self.__ashPlacing then return end
+    -- The game moved the bar: measure its new spot once its layout is done.
+    -- (It sets several points in a row; stepping in after the first one
+    -- would leave clashing points.)
+    hb.__ashLayout = nil
+    relayoutSoon()
+  end)
+end
+
+local function place(bar, frame, point, x, y, w, h)
+  bar.__ashPlacing = true
+  bar:ClearAllPoints()
+  bar:SetPoint(point, frame, point, x, y)
+  bar:SetSize(w, h)
+  bar.__ashPlacing = nil
+end
+
+function M.LayoutBars(key)
+  local frame, hb, pb = barsOf(key)
+  if not (frame and hb and hb.ClearAllPoints and frame.GetTop) then return end
+  -- before a unit is shown the game hasn't laid its frame out yet
+  if not (frame.IsVisible and frame:IsVisible()) then return end
+  watch(hb, hb); watch(pb, hb)
+  local L = hb.__ashLayout
+  if not L then
+    L = measure(frame, hb, pb)
+    if not L then return end
+    hb.__ashLayout = L
+  end
+
+  local w, h, top, ph = L.w, L.h, L.top, L.ph
+  if key == "target" and ns.db.alignTarget then
+    local pf, phb = barsOf("player")
+    local P = phb and phb.__ashLayout
+    local pft, ft = pf and pf:GetTop(), frame:GetTop()
+    if P then
+      w, h, ph = P.w, P.h, P.ph or ph
+      if num(pft, ft) then
+        local shift = (pft + P.top) - (ft + top)
+        if math.abs(shift) <= ALIGN_RANGE then top = top + math.floor(shift + 0.5) end
+      end
+    end
+  end
+
+  -- the target and focus portraits are on the right: keep the bars' right edge
+  local point, x = "TOPLEFT", L.left
+  if key ~= "player" then point, x = "TOPRIGHT", L.right end
+  place(hb, frame, point, x, top, w, h)
+  if pb and pb.ClearAllPoints then place(pb, frame, point, x, top - h, w, ph or 10) end
+end
+
+-- kept for /ash aligntarget
+function M.AlignTarget() M.LayoutBars("player"); M.LayoutBars("target") end
 
 -- Buffs and debuffs under the target and focus frames start right below the
 -- game's frame art, which sits higher than the panel's bottom edge. The first
@@ -389,12 +404,13 @@ local function realign()
   pending = true
   soon(function()
     pending = false
-    ns.Run("unitframes align target", M.AlignTarget)
+    for _, key in ipairs(LAYOUT_KEYS) do ns.Run("unitframes layout " .. key, M.LayoutBars, key) end
     ns.Guard("unitframes auras", M.NudgeAuras, _G.TargetFrame)
     ns.Guard("unitframes auras", M.NudgeAuras, _G.FocusFrame)
   end)
 end
 M.RealignSoon = realign
+relayoutSoon = realign
 
 function M.Enable()
   for _, u in ipairs(UNITS) do
@@ -406,8 +422,10 @@ function M.Enable()
   ev:RegisterEvent("PLAYER_TARGET_CHANGED")
   ev:RegisterEvent("PLAYER_FOCUS_CHANGED")
   ev:RegisterEvent("UNIT_AURA")
+  ev:RegisterEvent("UNIT_DISPLAYPOWER")
   ev:SetScript("OnEvent", function(_, event, unit)
-    if event == "UNIT_AURA" and unit ~= "target" and unit ~= "focus" then return end
+    if (event == "UNIT_AURA" or event == "UNIT_DISPLAYPOWER")
+       and unit ~= "target" and unit ~= "focus" and unit ~= "player" then return end
     realign()
   end)
   local em = _G.EditModeManagerFrame

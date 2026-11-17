@@ -26,7 +26,7 @@ How it stays safe
 ]]
 
 local ADDON, ns = ...
-ns.VERSION = "0.1.13"
+ns.VERSION = "0.1.14"
 _G.Ashwright = ns
 
 local WHITE = "Interface\\Buttons\\WHITE8X8"
@@ -166,6 +166,7 @@ function ns.Kill(region, hard)
     region.__ashHidden = true
     region:Hide()
     ns.Keep(region, "Show", function(self) self:Hide() end)
+    ns.Keep(region, "SetShown", function(self, v) if v then self:Hide() end end)
   end
 end
 

@@ -266,10 +266,13 @@ local function styleStatus(sb)
 end
 
 -- Everything the game draws in a bar container except the fill and the rested
--- band: frame art, the rounded end caps, the rested tick. Walks nested frames,
--- skipping Ashwright's own panels.
-local function sweepArt(frame, depth)
+-- band: frame art with its rounded end caps, the dividers, the rested tick.
+-- Walks nested frames, skipping Ashwright's own panels and Edit Mode's
+-- selection highlight. The art is hidden, not just faded: the game fades it
+-- back in with animations, which a fade can't hold off.
+local function sweepArt(frame, depth, parent)
   if type(frame) ~= "table" or not frame.GetRegions or frame.__ashBox or depth > 4 then return end
+  if parent and parent.Selection == frame then return end
   local keep = {}
   if frame.GetStatusBarTexture then
     local fill = frame:GetStatusBarTexture()
@@ -280,11 +283,11 @@ local function sweepArt(frame, depth)
   for _, r in ipairs({ frame:GetRegions() }) do
     -- fills (flattened) and the rested band (marked __ash) stay
     if r.GetObjectType and r:GetObjectType() == "Texture" and not keep[r] and not r.__ashFlat and not r.__ash then
-      ns.Kill(r)
+      ns.Kill(r, true)
     end
   end
   if frame.GetChildren then
-    for _, c in ipairs({ frame:GetChildren() }) do sweepArt(c, depth + 1) end
+    for _, c in ipairs({ frame:GetChildren() }) do sweepArt(c, depth + 1, frame) end
   end
 end
 M.SweepArt = sweepArt
@@ -303,7 +306,7 @@ local function styleTrackingManager(manager)
   for _, c in ipairs(containers) do
     if type(c) == "table" then
       -- the segmented frame art and the tick dividers (the game re-shows both)
-      ns.Kill(c.BarFrameTexture)
+      ns.Kill(c.BarFrameTexture, true)
       hideDividers(c, 1)
       local sb = c.StatusBar or (c.GetObjectType and c:GetObjectType() == "StatusBar" and c)
       if sb and styleStatus(sb) then n = n + 1 end
@@ -337,6 +340,38 @@ local function styleXP()
   ns.Each(ns.Kill, _G.MainMenuXPBarTexture0, _G.MainMenuXPBarTexture1, _G.MainMenuXPBarTexture2,
           _G.MainMenuXPBarTexture3, _G.ExhaustionTick and _G.ExhaustionTick.GetNormalTexture and _G.ExhaustionTick:GetNormalTexture())
   ns.Note("actionbars", "xp / reputation bars", styled > 0 and (styled .. " styled") or nil)
+end
+
+-- The game builds new dividers and bars as you level or track a reputation,
+-- so the sweep runs again after those changes (once per frame at most).
+local xpPending = false
+local function restyleXP()
+  if xpPending then return end
+  xpPending = true
+  local run = function() xpPending = false; ns.Guard("actionbars xp", styleXP) end
+  if C_Timer and C_Timer.After then C_Timer.After(0, run) else run() end
+end
+M.RestyleXP = restyleXP
+
+local function watchXP()
+  local ev = CreateFrame("Frame")
+  ns.Each(function(e) ev:RegisterEvent(e) end, "PLAYER_ENTERING_WORLD", "PLAYER_XP_UPDATE",
+          "UPDATE_EXHAUSTION", "PLAYER_LEVEL_UP", "UPDATE_FACTION", "PLAYER_UPDATE_RESTING")
+  ev:SetScript("OnEvent", restyleXP)
+  for _, name in ipairs({ "StatusTrackingBarManager", "MainStatusTrackingBarManager",
+                          "SecondaryStatusTrackingBarManager" }) do
+    local m = _G[name]
+    if m then
+      ns.Each(function(meth) if m[meth] then hooksecurefunc(m, meth, restyleXP) end end,
+              "UpdateBarsShown", "LayoutBars", "UpdateBarTicks")
+      if m.GetChildren then
+        for _, c in ipairs({ m:GetChildren() }) do
+          ns.Each(function(meth) if type(c) == "table" and c[meth] then hooksecurefunc(c, meth, restyleXP) end end,
+                  "UpdateBarTicks", "SetBarsShown", "UpdateShownState")
+        end
+      end
+    end
+  end
 end
 
 ---------------------------------------------------------------------------
@@ -396,6 +431,7 @@ function M.Enable()
   relayout()
 
   ns.Guard("xp bar", styleXP)
+  ns.Guard("xp bar watch", watchXP)
 
   local ev = CreateFrame("Frame")
   ev:RegisterEvent("PLAYER_ENTERING_WORLD")

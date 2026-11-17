@@ -38,6 +38,8 @@ frame:SetScript("OnEvent", function(_, event, arg1)
     copyDefaults(AshwrightDB, ns.DEFAULTS)
     ns.db = AshwrightDB
     ns.db.errors = ns.db.errors or {}
+    -- errors from an older version are history: start each version clean
+    if ns.db.errorsVersion ~= ns.VERSION then ns.db.errors = {}; ns.db.errorsVersion = ns.VERSION end
   elseif event == "PLAYER_LOGIN" then
     enableModules()
   elseif event == "PLAYER_REGEN_ENABLED" then

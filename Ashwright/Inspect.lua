@@ -31,6 +31,19 @@ local function describe(o, path)
     if layer then t.layer = tostring(layer) .. ":" .. tostring(sub or 0) end
   end
   t.w, t.h = clean(ns.safe(o.GetWidth, o)), clean(ns.safe(o.GetHeight, o))
+  t.top, t.bottom = clean(ns.safe(o.GetTop, o)), clean(ns.safe(o.GetBottom, o))
+  -- where it hangs from: point, the frame it hangs from, that frame's point, offsets
+  local n = o.GetNumPoints and ns.safe(o.GetNumPoints, o)
+  if type(n) == "number" and not ns.isSecret(n) and n > 0 then
+    local pts = {}
+    for i = 1, n do
+      local p, rel, rp, x, y = ns.safe(o.GetPoint, o, i)
+      local relName = rel and (ns.safe(rel.GetDebugName, rel) or ns.safe(rel.GetName, rel)) or "?"
+      pts[#pts + 1] = ("%s %s %s %s %s"):format(tostring(p), tostring(clean(relName)), tostring(rp),
+                                               tostring(clean(x)), tostring(clean(y)))
+    end
+    t.points = table.concat(pts, " | ")
+  end
   if t.type == "Texture" or t.type == "MaskTexture" then
     t.atlas = clean(ns.safe(o.GetAtlas, o))
     t.texture = clean(ns.safe(o.GetTexture, o))
@@ -87,7 +100,22 @@ function ns.Inspect(kind)
   if not root then ns.Say(label) return end
   local out = {}
   walk(root, kind, depth, out)
-  if ours then out[#out + 1] = describe(ours, "ashwright panel") end
+  if ours then
+    out[#out + 1] = describe(ours, "ashwright panel")
+    if ours.outer then out[#out + 1] = describe(ours.outer, "ashwright panel outer") end
+  end
+  -- the buffs and debuffs under the target frame
+  if kind == "target" and _G.TargetFrame then
+    local tf, i = _G.TargetFrame, 0
+    if tf.auraPools and tf.auraPools.EnumerateActive then
+      for a in tf.auraPools:EnumerateActive() do i = i + 1; out[#out + 1] = describe(a, "aura" .. i) end
+    end
+    if i == 0 and tf.GetChildren then
+      for _, c in ipairs({ tf:GetChildren() }) do
+        if c.Icon then i = i + 1; out[#out + 1] = describe(c, "aura?" .. i) end
+      end
+    end
+  end
   ns.db.inspect = ns.db.inspect or {}
   ns.db.inspect[kind] = { at = ns.safe(GetServerTime), addon = ns.VERSION, entries = out }
 

@@ -78,6 +78,9 @@ methods.Show = function(s) s.__shown = true end
 methods.Hide = function(s) s.__shown = false end
 
 local frames = {}
+-- a stand-in for the game's secret values: indexing a table with one errors
+local SECRET = setmetatable({}, { __tostring = function() return "<secret>" end })
+function issecretvalue(v) return v == SECRET end
 -- timers run at once unless a test queues them to play the game's frame order
 local timerQueue
 C_Timer = { After = function(_, fn) if timerQueue then timerQueue[#timerQueue + 1] = fn else fn() end end }
@@ -163,6 +166,7 @@ else
   local cont = new("Frame"); cont.BarFrameTexture = new("Texture"); cont.StatusBar = bar(); xpm.__children = { cont }
   local divf = new("Frame"); divf.BarDividerTexture = new("Texture"); divf.BarDividerTexture.__atlas = "UI-HUD-ExperienceBar-Divider"
   divf.__regions = { divf.BarDividerTexture }
+  cont.Selection = new("Frame"); cont.Selection.Center = new("Texture"); cont.Selection.__regions = { cont.Selection.Center }
   local xpf = new("Frame"); xpf.StatusBar = bar(); xpf.StatusBar.Background = new("Texture"); xpf.ExhaustionLevelFillBar = new("Texture")
   -- the rounded end caps and the rested band are regions of the bar frame;
   -- the fill is a region of the status bar
@@ -170,7 +174,7 @@ else
   xpf.__regions = { xpf.LeftCap, xpf.ExhaustionLevelFillBar, xpf.RightCap }
   xpf.__children = { xpf.StatusBar }
   xpf.StatusBar.__regions = { xpf.StatusBar:GetStatusBarTexture(), xpf.StatusBar.Background }
-  cont.__children = { divf, xpf }
+  cont.__children = { cont.Selection, divf, xpf }
   local tf = new("Button", "TargetFrame")
   tf.TargetFrameContainer = { FrameTexture = new("Texture") }
   local thb = bar(); thb.__level = 0; thb.__size = { 126, 20 }
@@ -181,6 +185,8 @@ else
   -- player bars 124x18 (top 498); target bars 126x20, top 503, frame top-right at 482,540
   hbc.HealthBar.__rect = { 100, 480, 124, 18 }; thb.__rect = { 300, 483, 126, 20 }
   tf.__rect = { 250, 440, 232, 100 }
+  pf.__rect = { 40, 440, 232, 100 }                       -- player frame, same height as the target's
+  pf.PlayerFrameContent.PlayerFrameContentMain.ManaBarArea.ManaBar.__size = { 124, 10 }
   tf.__shown = false   -- no target at login: the bars' spot isn't learned yet
   -- auras: the first hangs from the frame, the second from the first
   local a1, a2 = new("Button"), new("Button")
@@ -393,6 +399,12 @@ do
     cb:SetStatusBarColor(1, 1, 1)
     local g = ns.modules.castbars.TYPE_COLOR.channel
     assert(math.abs(cb.__color[2] - g[2]) < 1e-3, "channel color not applied")
+    -- in a group the target's cast state is secret: plain cast color, no error
+    local errs = #ns.db.errors
+    TargetFrame.spellbar.barType = SECRET; TargetFrame.spellbar:SetStatusBarTexture("x")
+    assert(#ns.db.errors == errs, "secret cast state errored: " .. tostring(ns.db.errors[#ns.db.errors]))
+    local amber = ns.modules.castbars.TYPE_COLOR.standard
+    assert(math.abs(TargetFrame.spellbar.__color[1] - amber[1]) < 1e-3, "secret cast state not shown as a cast")
     TargetFrame.spellbar.barType = "interrupted"; TargetFrame.spellbar:SetStatusBarTexture("x")
     local r = ns.modules.castbars.TYPE_COLOR.interrupted
     assert(math.abs(TargetFrame.spellbar.__color[1] - r[1]) < 1e-3, "interrupted color not applied")
@@ -456,12 +468,22 @@ do
 end
 
 if LAYOUT == "modern" then
-  -- the target's wider mana bar is hung under the health bar at its width
+  -- power bars sit right under the health bars at the same width, pinned to the
+  -- unit frame itself, never to the health bar (the game positions some of
+  -- its containers off the power bar: hanging one from the other made a loop)
   local main = TargetFrame.TargetFrameContent.TargetFrameContentMain
-  local tpb, thb = main.ManaBar, main.HealthBarsContainer.HealthBar
-  local seen = {}
-  for i = 1, tpb:GetNumPoints() do local p, rel, rp = tpb:GetPoint(i); seen[p] = (rel == thb) and rp end
-  assert(seen.TOPLEFT == "BOTTOMLEFT" and seen.TOPRIGHT == "BOTTOMRIGHT", "target mana bar not aligned under health")
+  local function check(bar, frame, point, x, y, w, h, what)
+    assert(bar:GetNumPoints() == 1, what .. " has " .. bar:GetNumPoints() .. " anchors")
+    local p, rel, rp, bx, by = bar:GetPoint(1)
+    assert(p == point and rel == frame and rp == point and bx == x and by == y,
+           ("%s misplaced: %s %s %s %s"):format(what, tostring(p), tostring(rel == frame), tostring(bx), tostring(by)))
+    assert(bar.__size[1] == w and bar.__size[2] == h, what .. " wrong size")
+  end
+  local _, _, _, _, thy = main.HealthBarsContainer.HealthBar:GetPoint(1)
+  check(main.ManaBar, TargetFrame, "TOPRIGHT", -56, thy - 18, 124, 10, "target mana bar")
+  local pmain = PlayerFrame.PlayerFrameContent.PlayerFrameContentMain
+  check(pmain.HealthBarsContainer.HealthBar, PlayerFrame, "TOPLEFT", 60, -42, 124, 18, "player health bar")
+  check(pmain.ManaBarArea.ManaBar, PlayerFrame, "TOPLEFT", 60, -60, 124, 10, "player mana bar")
 end
 for _, u in ipairs(ns.modules.unitframes.UNITS) do
   if u.key == "target" or u.key == "focus" then assert(u.ornate, u.key .. " not ornate") end
@@ -501,13 +523,24 @@ if LAYOUT == "modern" then
   assert(band.__shown == false, "target name band came back")
   -- XP: ticks, background gone; rested band kept but flat
   local xc = MainStatusTrackingBarManager.__children[1]
-  assert(xc.__children[1].BarDividerTexture.__alpha == 0, "xp tick not faded")
-  assert(xc.__children[2].StatusBar.Background.__alpha == 0, "xp background not faded")
-  local rb = xc.__children[2].ExhaustionLevelFillBar
+  assert(xc.__children[2].BarDividerTexture.__alpha == 0, "xp tick not faded")
+  assert(xc.__children[3].StatusBar.Background.__alpha == 0, "xp background not faded")
+  local rb = xc.__children[3].ExhaustionLevelFillBar
   assert(rb.__file == ns.WHITE and rb.__alpha ~= 0, "rested band not flat or was hidden")
-  local xpf = xc.__children[2]
+  local xpf = xc.__children[3]
   assert(xpf.LeftCap.__alpha == 0 and xpf.RightCap.__alpha == 0, "xp end caps not faded")
   assert(xpf.StatusBar:GetStatusBarTexture().__alpha ~= 0, "xp fill was faded")
+  -- hidden, not just faded: the game fades its art back in with animations
+  assert(xpf.LeftCap.__shown == false and xc.BarFrameTexture.__shown == false, "xp art only faded, not hidden")
+  xc.BarFrameTexture:SetShown(true)
+  assert(xc.BarFrameTexture.__shown == false, "xp frame art came back through SetShown")
+  -- a divider the game adds later (after a level-up) is swept too
+  local late = new("Frame"); late.BarDividerTexture = new("Texture"); late.__regions = { late.BarDividerTexture }
+  xc.__children[#xc.__children + 1] = late
+  fire("PLAYER_LEVEL_UP")
+  assert(late.BarDividerTexture.__shown == false, "a divider added later was not hidden")
+  -- Edit Mode's selection highlight is left alone
+  assert(xc.Selection.Center.__shown ~= false, "edit mode highlight hidden")
   assert(MainStatusTrackingBarManager.__children[1].StatusBar.__tex == ns.WHITE, "xp bar not flat")
   assert(MainStatusTrackingBarManager.__children[1].BarFrameTexture.__alpha == 0, "xp bar art not faded")
 else
