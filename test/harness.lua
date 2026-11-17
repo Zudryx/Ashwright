@@ -332,7 +332,7 @@ end
 
 ---------------------------------------------------------------- load and run
 local ns = {}
-for _, file in ipairs({ "Core.lua", "Scan.lua", "Inspect.lua", "Modules/UnitFrames.lua", "Modules/ActionBars.lua",
+for _, file in ipairs({ "Core.lua", "Scan.lua", "Inspect.lua", "Dump.lua", "Modules/UnitFrames.lua", "Modules/ActionBars.lua",
                         "Modules/Minimap.lua", "Modules/Chat.lua", "Modules/Nameplates.lua",
                         "Modules/Tooltip.lua", "Modules/CastBars.lua", "Init.lua" }) do
   assert(loadfile(DIR .. "/" .. file))("Ashwright", ns)
@@ -628,6 +628,14 @@ local xpRoot = _G.MainStatusTrackingBarManager or _G.MainMenuExpBar
 xpRoot.__regions = xpRoot.__regions or {}
 table.insert(xpRoot.__regions, secretText)
 SlashCmdList.ASHWRIGHT("inspect target"); SlashCmdList.ASHWRIGHT("inspect xp"); SlashCmdList.ASHWRIGHT("inspect nope")
+-- /ash dump: every visible frame, secrets written as "secret"
+SlashCmdList.ASHWRIGHT("dump")
+assert(AshwrightDB.dump and AshwrightDB.dump.frames > 0 and #AshwrightDB.dump.lines > 0, "dump recorded nothing")
+for _, line in ipairs(AshwrightDB.dump.lines) do
+  assert(type(line) == "string" and not line:find("<secret>", 1, true), "dump let a secret through: " .. tostring(line))
+end
+SlashCmdList.ASHWRIGHT("dump clear")
+assert(AshwrightDB.dump == nil, "dump not cleared")
 for _, e in ipairs(AshwrightDB.inspect.xp.entries) do
   for k, v in pairs(e) do
     assert(not tostring(v):find("<secret>", 1, true), "inspect let a secret through in " .. k .. ": " .. tostring(v))

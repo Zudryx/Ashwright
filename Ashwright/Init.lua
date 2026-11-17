@@ -53,6 +53,7 @@ local HELP = {
   "/ash module <name> on | off - unitframes, actionbars, castbars, minimap, chat, nameplates, tooltip (needs /reload)",
   "/ash ornate on | off - double iron border on the player frame, action bars and minimap (needs /reload)",
   "/ash nameoffset <px> - how far unit frame names sit above the bars (default 4, needs /reload)",
+  "/ash dump - record everything on screen (every visible frame and its art), for troubleshooting; /ash dump clear removes it",
   "/ash inspect target | xp | plate - record what is drawn on the target frame, XP bar or your target's nameplate, for troubleshooting",
   "/ash chatpanel on | off - dark panel behind chat windows (needs /reload)",
   "/ash aligntarget on | off - line the target's bars up with yours when side by side",
@@ -97,6 +98,9 @@ SlashCmdList.ASHWRIGHT = function(msg)
     if not n or n < -10 or n > 20 then ns.Say("usage: /ash nameoffset <pixels, -10 to 20> (default 4)") return end
     ns.db.nameOffset = n
     ns.Say("unit frame names lifted " .. n .. " px. /reload to apply.")
+  elseif cmd == "dump" then
+    if rest == "clear" then ns.ClearDump() return end
+    if not ns.Guard("dump", ns.Dump) then ns.Say("dump hit a problem; /ash errors shows it.") end
   elseif cmd == "inspect" then
     -- guarded: a problem in the record goes to /ash errors, not a game error
     if not ns.Guard("inspect", ns.Inspect, rest ~= "" and rest:lower() or "target") then

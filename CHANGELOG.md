@@ -2,6 +2,9 @@
 
 Each `## x.y.z` section becomes the release notes for that version.
 
+## 0.1.23
+- `/ash dump` records everything on screen at once: every visible frame (not just the ones Ashwright knows), with its parent, position, what it hangs from, and its art and text. One dump answers what any piece of the screen is, so fixes come from data. `/ash dump clear` removes it from your saved settings.
+
 ## 0.1.22
 - `/ash inspect target` also records every frame drawn just under the target frame, found by where it sits on screen.
 

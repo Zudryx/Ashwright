@@ -4,7 +4,7 @@ A dark, minimal reskin of the WoW Forever default UI: flat bars, thin iron borde
 
 Ashwright only changes how Blizzard's frames look. It never moves secure frames, never replaces Blizzard functions and never changes what a button does. Anything that touches a Blizzard frame waits until you are out of combat.
 
-## What it skins (0.1.22)
+## What it skins (0.1.23)
 
 | Module | What changes |
 |---|---|
@@ -42,6 +42,7 @@ Changes are tried out as **test builds** before they're released: GitHub pre-rel
 /ash module <name> on | off   turn a module on or off (then /reload)
 /ash ornate on | off          double iron border on the player frame, bars and minimap
 /ash chatpanel on | off       dark panel behind chat windows
+/ash dump                     record everything on screen for a bug report (/ash dump clear removes it)
 /ash aligntarget on | off     line the target's bars up with yours
 /ash nameoffset 4             how far names sit above the bars (pixels)
 /ash inspect target | xp      record what is drawn on the target health bar or XP bar
