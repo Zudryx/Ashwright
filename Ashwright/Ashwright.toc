@@ -1,0 +1,19 @@
+## Interface: 16001
+## Title: Ashwright
+## Notes: A dark, minimal reskin of the default UI: flat bars, thin borders. /ash
+## Author: Zudryx
+## Version: 0.1.9
+## X-License: GPL-3.0-or-later
+## SavedVariables: AshwrightDB
+
+Core.lua
+Scan.lua
+Inspect.lua
+Modules\UnitFrames.lua
+Modules\ActionBars.lua
+Modules\Minimap.lua
+Modules\Chat.lua
+Modules\Nameplates.lua
+Modules\Tooltip.lua
+Modules\CastBars.lua
+Init.lua
