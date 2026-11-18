@@ -357,11 +357,23 @@ DebuffFrame = new("Frame", "DebuffFrame"); DebuffFrame.AuraContainer = new("Fram
 local debuff1 = auraButton(); debuff1.DebuffBorder.__shown = true; debuff1.DebuffBorder.__vc = { 0.2, 0.6, 1, 1 }
 DebuffFrame.AuraContainer.__children = { debuff1 }
 
+-- micro menu (Forever, from /ash dump): buttons with a red Background plate,
+-- the character button's portrait Shadow, bar BorderArt and BackgroundArt
+MicroMenu = new("Frame", "MicroMenu")
+MicroMenu.BorderArt = new("Texture"); MicroMenu.BackgroundArt = new("Texture")
+local function microButton(name)
+  local b = new("Button", name); b.Background = new("Texture"); return b
+end
+local charMB, questMB = microButton("CharacterMicroButton"), microButton("QuestLogMicroButton")
+charMB.Shadow = new("Texture")
+MicroMenu.__children = { charMB, questMB, new("Frame") }
+BagsBar = new("Frame", "BagsBar"); BagsBar.BorderArt = new("Texture")
+
 ---------------------------------------------------------------- load and run
 local ns = {}
 for _, file in ipairs({ "Core.lua", "Scan.lua", "Inspect.lua", "Dump.lua", "Modules/UnitFrames.lua", "Modules/ActionBars.lua",
                         "Modules/Minimap.lua", "Modules/Chat.lua", "Modules/Nameplates.lua",
-                        "Modules/Tooltip.lua", "Modules/CastBars.lua", "Modules/Buffs.lua", "Init.lua" }) do
+                        "Modules/Tooltip.lua", "Modules/CastBars.lua", "Modules/Buffs.lua", "Modules/MicroMenu.lua", "Init.lua" }) do
   assert(loadfile(DIR .. "/" .. file))("Ashwright", ns)
 end
 
@@ -686,6 +698,25 @@ assert(math.abs(e[1] - 0.541) < 1e-3, "weapon enchant edge not violet")
 local edgesBefore = #buff1.__regions
 fire("UNIT_AURA", "player"); if flushTimers then flushTimers() end
 assert(#buff1.__regions == edgesBefore, "buff restyled twice")
+
+-- buff collapse arrow: greyed and tinted, not gold
+local arrowGrey = false
+for _, e in ipairs(BuffFrame.CollapseAndExpandButton.NormalTexture.__log) do
+  if e[1] == "SetDesaturated" and e[2] == true then arrowGrey = true end
+end
+assert(arrowGrey, "buff collapse arrow still gold")
+
+-- micro menu: art gone, one ornate panel, each button's plate faded into a slot
+assert(MicroMenu.BorderArt.__alpha == 0 and MicroMenu.BackgroundArt.__alpha == 0, "micro menu art not faded")
+assert(BagsBar.BorderArt.__alpha == 0, "bags bar art not faded")
+assert(MicroMenu.__ashPanel and MicroMenu.__ashPanel.outer, "micro menu has no ornate panel")
+assert(charMB.Background.__alpha == 0 and charMB.Shadow.__alpha == 0, "micro button plate not faded")
+assert(questMB.__ashSlot and #questMB.__ashEdges == 4, "micro button has no slot")
+questMB.Background:SetAlpha(1)   -- the game re-shows the plate on press
+assert(questMB.Background.__alpha == 0, "micro button plate came back")
+local regionsBefore = #questMB.__regions
+ns.modules.micromenu.Sweep()
+assert(#questMB.__regions == regionsBefore and MicroMenu.__ashPanel, "micro menu restyled twice")
 
 -- /ash dump: every visible frame, secrets written as "secret"; a frame whose
 -- visibility is secret (target buffs in the game) is kept, marked F?

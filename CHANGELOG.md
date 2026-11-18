@@ -2,6 +2,10 @@
 
 Each `## x.y.z` section becomes the release notes for that version.
 
+## 0.1.29
+- New `micromenu` module: the menu bar's border and background art are gone. One panel with the double iron border sits behind the whole menu, and each button's red plate is replaced by a dark slot with a thin iron edge, sized so neighbours never overlap. The icons, mouseover art and notification badges stay. The bags bar's border art is gone too. `/ash module micromenu off` turns it off.
+- The buff bar's collapse arrow is grey iron instead of gold.
+
 ## 0.1.28
 - New `buffs` module: your buff and debuff bars by the minimap get Ashwright's look. Icons are cropped square in a dark slot with a thin iron edge. The game's debuff and weapon-enchant borders are gone, and their color moves to that edge: the debuff's type color, or violet for a weapon enchant. Time left and stack counts use the addon's font, and the collapse arrow is muted. `/ash module buffs off` turns it off.
 

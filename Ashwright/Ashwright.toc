@@ -2,7 +2,7 @@
 ## Title: Ashwright
 ## Notes: A dark, minimal reskin of the default UI: flat bars, thin borders. /ash
 ## Author: Zudryx
-## Version: 0.1.28
+## Version: 0.1.29
 ## X-License: GPL-3.0-or-later
 ## SavedVariables: AshwrightDB
 
@@ -18,4 +18,5 @@ Modules\Nameplates.lua
 Modules\Tooltip.lua
 Modules\CastBars.lua
 Modules\Buffs.lua
+Modules\MicroMenu.lua
 Init.lua

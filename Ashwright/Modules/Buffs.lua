@@ -104,7 +104,11 @@ function M.Sweep()
   if arrow then
     for _, k in ipairs({ "NormalTexture", "PushedTexture" }) do
       local t = arrow[k] or (arrow["Get" .. k] and arrow["Get" .. k](arrow))
-      if t and t.SetVertexColor then t:SetVertexColor(C.muted[1], C.muted[2], C.muted[3]) end
+      if t and t.SetVertexColor then
+        -- the arrow art is gold; greyed, then tinted, it reads as iron
+        if t.SetDesaturated then t:SetDesaturated(true) end
+        t:SetVertexColor(C.muted[1], C.muted[2], C.muted[3])
+      end
     end
   end
 end
