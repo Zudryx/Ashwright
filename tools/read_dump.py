@@ -22,7 +22,7 @@ def load(path):
     out = []
     for m in re.finditer(r'"((?:[^"\\]|\\.)*)",?\n', body):
         s = m.group(1).encode().decode("unicode_escape")
-        if not (s[:1] in ("F", "H", "A", "C", "P") or s.startswith("  ")):
+        if not (s[:1] in ("F", "H", "A", "C", "P", "#") or s.startswith("  ")):
             break
         out.append(s)
     return out

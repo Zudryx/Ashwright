@@ -2,6 +2,9 @@
 
 Each `## x.y.z` section becomes the release notes for that version.
 
+## 0.1.30
+- `/ash dump more` adds what's on screen now to the last dump instead of replacing it, skipping frames it already holds. Several windows (character, spellbook, quest log, bags...) can go into one file.
+
 ## 0.1.29
 - New `micromenu` module: the menu bar's border and background art are gone. One panel with the double iron border sits behind the whole menu, and each button's red plate is replaced by a dark slot with a thin iron edge, sized so neighbours never overlap. The icons, mouseover art and notification badges stay. The bags bar's border art is gone too. `/ash module micromenu off` turns it off.
 - The buff bar's collapse arrow is grey iron instead of gold.

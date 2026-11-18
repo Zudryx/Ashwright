@@ -723,6 +723,7 @@ assert(#questMB.__regions == regionsBefore and MicroMenu.__ashPanel, "micro menu
 local secretVis = new("Button"); secretVis.__name = "SecretVisBuff"
 secretVis.IsVisible = function() return SECRET end
 gameFrames[#gameFrames + 1] = secretVis
+CreateFrame("Frame", "AshTestFirst", UIParent)   -- in the first part; dump more must not repeat it
 -- the target's auras, as the game reports them (icon secret in a group)
 local savedAuras = C_UnitAuras
 C_UnitAuras = { GetAuraDataByIndex = function(unit, i, filter)
@@ -757,6 +758,22 @@ assert(AshwrightDB.dump and AshwrightDB.dump.frames > 0 and #AshwrightDB.dump.li
 for _, line in ipairs(AshwrightDB.dump.lines) do
   assert(type(line) == "string" and not line:find("<secret>", 1, true), "dump let a secret through: " .. tostring(line))
 end
+-- /ash dump more: a new window is added, frames already there are not repeated
+local before = #AshwrightDB.dump.lines
+local win = CreateFrame("Frame", "AshTestWindow", UIParent)
+SlashCmdList.ASHWRIGHT("dump more")
+local d = AshwrightDB.dump
+assert(d.part == 2 and d.lines[before + 1] == "# part 2", "dump more did not start a new part")
+local sawWin, repeats, firstName = false, 0, "AshTestFirst"
+local inFirst = false
+for i = 1, before do if d.lines[i]:find("^F AshTestFirst ") then inFirst = true end end
+assert(inFirst, "first part is missing AshTestFirst")
+for i = before + 2, #d.lines do
+  if d.lines[i]:find("^F AshTestWindow") then sawWin = true end
+  if d.lines[i]:match("^%S+ ([^|]-) |") == firstName then repeats = repeats + 1 end
+end
+assert(sawWin, "dump more missed the new window")
+assert(repeats == 0, "dump more repeated " .. firstName .. " from the first part")
 SlashCmdList.ASHWRIGHT("dump clear")
 assert(AshwrightDB.dump == nil, "dump not cleared")
 for _, e in ipairs(AshwrightDB.inspect.xp.entries) do

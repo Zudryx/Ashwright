@@ -13,7 +13,7 @@ written as "secret".
 
 local _, ns = ...
 
-local MAX_LINES = 30000
+local MAX_LINES = 60000
 
 local function clean(v)
   if v == nil then return "-" end
@@ -115,10 +115,25 @@ local function targetAuras(lines)
   end
 end
 
-function ns.Dump()
+-- append: /ash dump more adds this screen to the last dump, skipping frames
+-- it already holds (by name), so several windows can go in one file
+function ns.Dump(append)
   if not EnumerateFrames then ns.Say("this client can't list its frames.") return end
+  local prev = append and ns.db.dump or nil
   local lines, frames, skipped, unsure, hidden = {}, 0, 0, 0, 0
+  local have = {}
+  if prev and prev.lines then
+    lines = prev.lines
+    for _, l in ipairs(lines) do
+      local name = l:match("^%S+ ([^|]-) |")
+      if name and name ~= "?" then have[name] = true end
+    end
+    prev.part = (prev.part or 1) + 1
+    lines[#lines + 1] = "# part " .. prev.part
+  end
   local function record(f, mark)
+    local name = nameOf(f)
+    if name ~= "?" and have[name] then return end   -- already in an earlier part
     local good = pcall(function()
       lines[#lines + 1] = mark .. frameLine(f):sub(2)
       for _, r in ipairs({ f:GetRegions() }) do
@@ -182,6 +197,13 @@ function ns.Dump()
     else
       lines[#lines + 1] = "A no aura holder on " .. nameOf(root)
     end
+  end
+  if prev then
+    prev.frames = (prev.frames or 0) + frames
+    prev.truncated = (#lines >= MAX_LINES) or nil
+    ns.Say(("dump part %d: %d new frames added (%d lines in all%s). Open the next window and /ash dump more, or log out and send the file.")
+      :format(prev.part, frames, #lines, #lines >= MAX_LINES and ", stopped at the limit" or ""))
+    return
   end
   ns.db.dump = { at = ns.safe(GetServerTime), addon = ns.VERSION, frames = frames, skipped = skipped, unlisted = unlisted, unsure = unsure, hidden = hidden,
                  truncated = (#lines >= MAX_LINES) or nil, lines = lines }
