@@ -2,6 +2,10 @@
 
 Each `## x.y.z` section becomes the release notes for that version.
 
+## 0.1.27
+- Fixed the 0.1.26 error "attempt to compare local 'n' (a secret number value)". The target's buff holder keeps its anchor secret, so Ashwright no longer reads it. It anchors the holder itself, just under the panel's outer edge, and puts it back whenever the game moves it.
+- `/ash dump` now records the target and focus buff holders and their buttons by name, marked `P`. A frame whose anchors are secret now shows "points secret" instead of dropping out.
+
 ## 0.1.26
 - Target and focus buffs: Ashwright now moves the frame that holds them (inside the unit frame's content), not only the ones it found before. The buffs should sit just below the panel's outer edge.
 - `/ash dump` also walks the player, target and focus frames' own children. It records any the game leaves out of its frame list, marked `C`.

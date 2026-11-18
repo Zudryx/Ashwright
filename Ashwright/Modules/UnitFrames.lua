@@ -381,18 +381,7 @@ local function auraFrames(frame)
   -- Forever keeps a unit frame's auras in Content.Contextual.Auras (the dump
   -- found it on the focus and boss frames; the game does not list the target's).
   -- Move the holder when it has an anchor, otherwise its buttons.
-  local ctx = frame.TargetFrameContent and frame.TargetFrameContent.TargetFrameContentContextual
-  local holder = ctx and ctx.Auras
-  if holder then
-    local n = holder.GetNumPoints and holder:GetNumPoints() or 0
-    if type(n) == "number" and n > 0 then
-      add(holder)
-    elseif holder.GetChildren then
-      for _, c in ipairs({ holder:GetChildren() }) do
-        if isAuraButton(c) then add(c) end
-      end
-    end
-  end
+  -- (that holder's anchor is secret, so it is placed by M.PlaceHolder instead)
   if frame.auraPools and frame.auraPools.EnumerateActive then
     for a in frame.auraPools:EnumerateActive() do add(a) end
   end
@@ -422,6 +411,36 @@ local function anchorY(rel, rp)
   return num(t, b) and (t + b) / 2 or nil
 end
 
+-- how many anchors a frame has; 0 when the game keeps that secret
+local function pointCount(o)
+  local n = o.GetNumPoints and o:GetNumPoints() or 0
+  if issecretvalue and issecretvalue(n) then return 0 end
+  return type(n) == "number" and n or 0
+end
+
+-- Forever keeps a unit frame's buffs in Content.Contextual.Auras, and keeps
+-- where it is anchored secret. Its spot is ours: top left just under the
+-- panel's outer edge, so the buffs start below the panel instead of on it.
+function M.Holder(frame)
+  local ctx = frame and frame.TargetFrameContent and frame.TargetFrameContent.TargetFrameContentContextual
+  return ctx and ctx.Auras
+end
+function M.PlaceHolder(frame)
+  local holder, panel = M.Holder(frame), frame and frame.__ashPanel
+  if not (holder and panel and holder.SetPoint) then return end
+  local edge = panel.outer or panel
+  holder.__ashPlacing = true
+  holder:ClearAllPoints()
+  holder:SetPoint("TOPLEFT", edge, "BOTTOMLEFT", 0, -AURA_GAP)
+  holder.__ashPlacing = nil
+  if not holder.__ashHolderHook then
+    holder.__ashHolderHook = true
+    ns.Keep(holder, "SetPoint", function(self)
+      if not self.__ashPlacing and M.RealignSoon then M.RealignSoon() end
+    end)
+  end
+end
+
 function M.NudgeAuras(frame)
   local panel = frame and frame.__ashPanel
   if not panel then return end
@@ -429,8 +448,9 @@ function M.NudgeAuras(frame)
   local auras = auraFrames(frame)
   local isAura = {}
   for _, a in ipairs(auras) do isAura[a] = true end
+  M.PlaceHolder(frame)
   for _, a in ipairs(auras) do
-    local n = a.GetNumPoints and a:GetNumPoints() or 0
+    local n = pointCount(a)
     local p, rel, rp, x, y
     if n >= 1 then p, rel, rp, x, y = a:GetPoint(1) end
     if p and p:find("TOP") and rel and not isAura[rel] and num(x, y) then

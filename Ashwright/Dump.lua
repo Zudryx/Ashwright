@@ -36,7 +36,8 @@ end
 
 local function points(o)
   local n = ns.safe(o.GetNumPoints, o)
-  if type(n) ~= "number" or ns.isSecret(n) or n == 0 then return "" end
+  if issecretvalue and issecretvalue(n) then return "points secret" end
+  if type(n) ~= "number" then return "" end
   local t = {}
   for i = 1, n do
     local p, rel, rp, x, y = ns.safe(o.GetPoint, o, i)
@@ -169,6 +170,18 @@ function ns.Dump()
   end
   for _, root in ipairs({ TargetFrame, FocusFrame, PlayerFrame }) do
     if root then pcall(walk, root, 0) end
+  end
+  -- the aura holders by path, whatever the lists say: P lines, then their buttons
+  for _, root in ipairs({ TargetFrame, FocusFrame }) do
+    local holder = root and root.TargetFrameContent and root.TargetFrameContent.TargetFrameContentContextual
+                   and root.TargetFrameContent.TargetFrameContentContextual.Auras
+    if holder then
+      record(holder, "P")
+      local kids = { pcall(function() return holder:GetChildren() end) }
+      for i = 2, #kids do if type(kids[i]) == "table" then record(kids[i], "P") end end
+    else
+      lines[#lines + 1] = "A no aura holder on " .. nameOf(root)
+    end
   end
   ns.db.dump = { at = ns.safe(GetServerTime), addon = ns.VERSION, frames = frames, skipped = skipped, unlisted = unlisted, unsure = unsure, hidden = hidden,
                  truncated = (#lines >= MAX_LINES) or nil, lines = lines }
