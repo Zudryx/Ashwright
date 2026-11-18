@@ -2,6 +2,9 @@
 
 Each `## x.y.z` section becomes the release notes for that version.
 
+## 0.1.34
+- Windows: the title bar strip and the outer edges are no longer see-through. The game's own background starts about 20 px under a window's top and 2 px in from its sides, where the metal frame used to cover. Each window now gets a solid fill from edge to edge. For the world map, the fill goes on the window behind the map, never over it.
+
 ## 0.1.33
 - New `controls` module for what sits inside windows:
   - Item slots (gear, bags, merchant, buyback, mail, loot, professions): the square plate and the round icon mask are gone. Each icon sits square in a dark slot whose thin edge takes the item's quality color, and empty bag slots are plain dark slots.

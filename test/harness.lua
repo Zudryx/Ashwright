@@ -748,6 +748,19 @@ charWin.Bg:SetTexture("Interface\\FrameGeneral\\UI-Background-Rock")   -- the ga
 assert(charWin.Bg.__file == ns.WHITE, "window background art came back")
 assert(charWin.TopTileStreaks.__alpha == 0 and charWin.PortraitContainer.portrait.__alpha == 0, "streaks or portrait left")
 assert(charWin.CloseButton.__normal.__alpha == 0 and charWin.CloseButton.__ashX, "close button not replaced")
+-- the whole window is filled edge to edge (the game's Bg leaves a strip at the top)
+local fillTex = charWin.__ashFill
+assert(fillTex and fillTex.__file == ns.WHITE and fillTex.__vc[1] == ns.C.panelSolid[1], "window not filled to its edges")
+local allPoints = false
+for _, e in ipairs(fillTex.__log) do if e[1] == "SetAllPoints" and e[2] == charWin then allPoints = true end end
+assert(allPoints, "window fill does not cover the whole window")
+-- a border laid over a window's content (the world map): the fill goes on the window behind
+local mapWin = CreateFrame("Frame", "AshTestWorldMap", UIParent)
+local mapBorder = metalWindow(nil)
+mapBorder.GetParent = function() return mapWin end
+mapWin.BorderFrame = mapBorder
+ns.modules.windows.Style(mapBorder)
+assert(mapWin.__ashFill and not mapBorder.__ashFill, "map fill not on the window behind its border")
 -- a window from a part that loads later is found after it loads
 local later = metalWindow("AshTestProfessionsFrame")
 fire("ADDON_LOADED", "Blizzard_Professions")

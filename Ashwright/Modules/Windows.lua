@@ -101,6 +101,24 @@ local function background(bg)
   if bg.GetObjectType and bg:GetObjectType() == "Texture" then flatten(bg) else flattenFrame(bg) end
 end
 
+-- the game's background starts ~20 px under the window's top and 2 px in from
+-- its sides (/ash dump: the merchant's Bg top is at 943, the window's at 964);
+-- the metal frame used to cover that strip. A fill under the whole window,
+-- edge to edge, closes it. When the styled frame is a border laid over the
+-- window's content (the world map's BorderFrame), the fill goes on the
+-- window behind it, so it can never cover the map.
+local function fill(f)
+  local host = f
+  local parent = f.GetParent and f:GetParent()
+  if parent and parent ~= UIParent and rawget(parent, "BorderFrame") == f then host = parent end
+  if host.__ashFill then return end
+  local t = host:CreateTexture(nil, "BACKGROUND", nil, -8)
+  t:SetAllPoints(host)
+  t:SetTexture(ns.WHITE)
+  t:SetVertexColor(unpack(C.panelSolid))
+  host.__ashFill = t
+end
+
 local function titleFont(fs)
   if not fs then return end
   ns.Font(fs, "title")
@@ -147,6 +165,7 @@ function M.Style(f)
   ns.KillTextures(nine)
   border(nine, f)
   background(f.Bg or named(f, "Bg"))
+  fill(f)
   ns.Kill(f.TopTileStreaks)
   local pc = f.PortraitContainer
   ns.Each(function(t) ns.Kill(t) end,
@@ -175,6 +194,7 @@ function M.StyleDialog(f)
   local border = f.Border
   local keep = {}
   if border.Bg then flatten(border.Bg); keep[border.Bg] = true end
+  fill(f)
   ns.KillTextures(border, keep)
   local px = ns.Pixel(f)
   local outline = ns.Box(border, px, false)
