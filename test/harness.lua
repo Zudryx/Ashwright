@@ -67,6 +67,8 @@ methods.GetRight = function(s) return s.__rect and s.__rect[1] + s.__rect[3] end
 methods.GetTop = function(s) return s.__rect and s.__rect[2] + s.__rect[4] end
 methods.SetSize = function(s, w, h) s.__size = { w, h } end
 methods.SetVertexColor = function(s, r, g, b, a) s.__vc = { r, g, b, a } end
+methods.GetVertexColor = function(s) local c = s.__vc or { 1, 1, 1, 1 }; return c[1], c[2], c[3], c[4] end
+methods.SetTexCoord = function(s, ...) s.__coord = { ... }; s.__log[#s.__log + 1] = { "SetTexCoord", ... } end
 methods.SetShown = function(s, v) s.__shown = v and true or false end
 methods.GetWidth = function(s) return (s.__size and s.__size[1]) or (s.__rect and s.__rect[3]) or 0 end
 methods.GetHeight = function(s) return (s.__size and s.__size[2]) or (s.__rect and s.__rect[4]) or 0 end
@@ -338,11 +340,28 @@ if LAYOUT == "modern" then
   _G["MultiBarBottomLeftButton12"].__shown = false     -- a hidden button is left out
 end
 
+-- the player's buff and debuff bars (Forever, from /ash dump): pooled 30x40
+-- buttons with Icon, Duration, Count, DebuffBorder and TempEnchantBorder
+local function auraButton()
+  local b = new("Button")
+  b.Icon = new("Texture"); b.Duration = new("FontString"); b.Count = new("FontString")
+  b.DebuffBorder = new("Texture"); b.DebuffBorder.__shown = false
+  b.TempEnchantBorder = new("Texture"); b.TempEnchantBorder.__shown = false
+  return b
+end
+BuffFrame = new("Frame", "BuffFrame"); BuffFrame.AuraContainer = new("Frame")
+BuffFrame.CollapseAndExpandButton = new("CheckButton"); BuffFrame.CollapseAndExpandButton.NormalTexture = new("Texture")
+local buff1 = auraButton()
+BuffFrame.AuraContainer.__children = { buff1 }
+DebuffFrame = new("Frame", "DebuffFrame"); DebuffFrame.AuraContainer = new("Frame")
+local debuff1 = auraButton(); debuff1.DebuffBorder.__shown = true; debuff1.DebuffBorder.__vc = { 0.2, 0.6, 1, 1 }
+DebuffFrame.AuraContainer.__children = { debuff1 }
+
 ---------------------------------------------------------------- load and run
 local ns = {}
 for _, file in ipairs({ "Core.lua", "Scan.lua", "Inspect.lua", "Dump.lua", "Modules/UnitFrames.lua", "Modules/ActionBars.lua",
                         "Modules/Minimap.lua", "Modules/Chat.lua", "Modules/Nameplates.lua",
-                        "Modules/Tooltip.lua", "Modules/CastBars.lua", "Init.lua" }) do
+                        "Modules/Tooltip.lua", "Modules/CastBars.lua", "Modules/Buffs.lua", "Init.lua" }) do
   assert(loadfile(DIR .. "/" .. file))("Ashwright", ns)
 end
 
@@ -641,6 +660,33 @@ local xpRoot = _G.MainStatusTrackingBarManager or _G.MainMenuExpBar
 xpRoot.__regions = xpRoot.__regions or {}
 table.insert(xpRoot.__regions, secretText)
 SlashCmdList.ASHWRIGHT("inspect target"); SlashCmdList.ASHWRIGHT("inspect xp"); SlashCmdList.ASHWRIGHT("inspect nope")
+-- buff bar: icons cropped in an iron-edged slot, the game's borders faded,
+-- a debuff's type color carried onto the edge
+if flushTimers then flushTimers() end
+assert(buff1.__ash and buff1.Icon.__coord and buff1.Icon.__coord[1] == 0.08, "buff icon not cropped")
+assert(#buff1.__ashEdges == 4, "buff has no edge")
+local e = buff1.__ashEdges[1].__vc
+assert(math.abs(e[1] - ns.C.slotBorder[1]) < 1e-6, "buff edge not iron")
+assert(debuff1.DebuffBorder.__alpha == 0, "debuff border not faded")
+e = debuff1.__ashEdges[1].__vc
+assert(e[1] == 0.2 and e[2] == 0.6 and e[3] == 1, "debuff edge does not show the debuff type")
+debuff1.DebuffBorder:SetVertexColor(0.8, 0, 0)   -- the game reuses the button for another type
+e = debuff1.__ashEdges[1].__vc
+assert(e[1] == 0.8 and e[2] == 0, "debuff edge did not follow the new type")
+debuff1.DebuffBorder:SetAlpha(1)                  -- the game fades its border back in
+assert(debuff1.DebuffBorder.__alpha == 0, "debuff border came back")
+-- a new aura arrives in a fresh pooled button
+local buff2 = auraButton(); buff2.TempEnchantBorder.__shown = true
+table.insert(BuffFrame.AuraContainer.__children, buff2)
+fire("UNIT_AURA", "player")
+if flushTimers then flushTimers() end
+assert(buff2.__ash and buff2.TempEnchantBorder.__alpha == 0, "new buff button not styled")
+e = buff2.__ashEdges[1].__vc
+assert(math.abs(e[1] - 0.541) < 1e-3, "weapon enchant edge not violet")
+local edgesBefore = #buff1.__regions
+fire("UNIT_AURA", "player"); if flushTimers then flushTimers() end
+assert(#buff1.__regions == edgesBefore, "buff restyled twice")
+
 -- /ash dump: every visible frame, secrets written as "secret"; a frame whose
 -- visibility is secret (target buffs in the game) is kept, marked F?
 local secretVis = new("Button"); secretVis.__name = "SecretVisBuff"

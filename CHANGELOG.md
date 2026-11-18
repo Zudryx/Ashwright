@@ -2,6 +2,9 @@
 
 Each `## x.y.z` section becomes the release notes for that version.
 
+## 0.1.28
+- New `buffs` module: your buff and debuff bars by the minimap get Ashwright's look. Icons are cropped square in a dark slot with a thin iron edge. The game's debuff and weapon-enchant borders are gone, and their color moves to that edge: the debuff's type color, or violet for a weapon enchant. Time left and stack counts use the addon's font, and the collapse arrow is muted. `/ash module buffs off` turns it off.
+
 ## 0.1.27
 - Fixed the 0.1.26 error "attempt to compare local 'n' (a secret number value)". The target's buff holder keeps its anchor secret, so Ashwright no longer reads it. It anchors the holder itself, just under the panel's outer edge, and puts it back whenever the game moves it.
 - `/ash dump` now records the target and focus buff holders and their buttons by name, marked `P`. A frame whose anchors are secret now shows "points secret" instead of dropping out.
