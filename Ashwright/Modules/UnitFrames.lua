@@ -378,6 +378,21 @@ local function auraFrames(frame)
   local list, seen = {}, {}
   local function add(a) if a and not seen[a] then seen[a] = true; list[#list + 1] = a end end
   for _, c in ipairs(M.AuraContainers(frame)) do add(c) end
+  -- Forever keeps a unit frame's auras in Content.Contextual.Auras (the dump
+  -- found it on the focus and boss frames; the game does not list the target's).
+  -- Move the holder when it has an anchor, otherwise its buttons.
+  local ctx = frame.TargetFrameContent and frame.TargetFrameContent.TargetFrameContentContextual
+  local holder = ctx and ctx.Auras
+  if holder then
+    local n = holder.GetNumPoints and holder:GetNumPoints() or 0
+    if type(n) == "number" and n > 0 then
+      add(holder)
+    elseif holder.GetChildren then
+      for _, c in ipairs({ holder:GetChildren() }) do
+        if isAuraButton(c) then add(c) end
+      end
+    end
+  end
   if frame.auraPools and frame.auraPools.EnumerateActive then
     for a in frame.auraPools:EnumerateActive() do add(a) end
   end

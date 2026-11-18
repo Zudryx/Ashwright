@@ -2,6 +2,10 @@
 
 Each `## x.y.z` section becomes the release notes for that version.
 
+## 0.1.26
+- Target and focus buffs: Ashwright now moves the frame that holds them (inside the unit frame's content), not only the ones it found before. The buffs should sit just below the panel's outer edge.
+- `/ash dump` also walks the player, target and focus frames' own children. It records any the game leaves out of its frame list, marked `C`.
+
 ## 0.1.25
 - `/ash dump` also lists the auras the game says your target has. It now keeps hidden frames too when they belong to the target or are laid out like an aura button (marked `H`). Together these show whether the target's buffs exist as frames at all, and where.
 

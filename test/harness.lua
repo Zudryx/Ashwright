@@ -222,6 +222,13 @@ else
   tf.spellbar.Border = new("Texture"); tf.spellbar.Icon = new("Texture"); tf.spellbar.Text = new("FontString")
   tf.TargetFrameContent = { TargetFrameContentMain = { HealthBarsContainer = thc, ManaBar = tmb,
                             Name = new("FontString"), ReputationColor = new("Texture") } }
+  -- Forever's real aura holder: Content.Contextual.Auras, left out of the game's frame list
+  local holder = new("Frame"); holder.__name = "TargetAurasHolder"
+  holder:SetPoint("TOPLEFT", tf, "BOTTOMLEFT", 5, 32)
+  tf.TargetFrameContent.TargetFrameContentContextual = { Auras = holder }
+  tf.__children = tf.__children or {}
+  table.insert(tf.__children, holder)
+  tf.__holder = holder
   tf.totFrame = new("Button"); tf.totFrame.HealthBar = bar(); tf.totFrame.FrameTexture = new("Texture")
   local party = new("Frame", "PartyFrame")
   for i = 1, 4 do
@@ -484,6 +491,9 @@ do
     local _, r2, _, x2, y2 = ac:GetPoint(2)
     assert(r1 == TargetFrame and y1 == 28 and r2 == TargetFrame and y2 == 28 and x1 == 5 and x2 == -5,
            ("aura container not moved under the panel: %s %s"):format(tostring(y1), tostring(y2)))
+    -- the Content.Contextual.Auras holder moves the same way
+    local _, hr, _, hx, hy = TargetFrame.__holder:GetPoint(1)
+    assert(hr == TargetFrame and hx == 5 and hy == 28, "aura holder not moved under the panel: " .. tostring(hy))
     -- positions secret (in a group): auras move down a fixed 8 from the game's spot
     local outer = TargetFrame.__ashPanel.outer
     local savedBottom = outer.GetBottom
@@ -649,6 +659,13 @@ for _, line in ipairs(AshwrightDB.dump.lines) do
   if line:find("^H HiddenTargetAura") then sawHidden = true end
 end
 assert(sawHidden, "dump dropped a hidden aura-shaped frame")
+if LAYOUT == "modern" then
+  local sawHolder = false
+  for _, line in ipairs(AshwrightDB.dump.lines) do
+    if line:find("^C TargetAurasHolder") then sawHolder = true end
+  end
+  assert(sawHolder and AshwrightDB.dump.unlisted >= 1, "dump missed a frame the game leaves out of its list")
+end
 assert(AshwrightDB.dump.lines[1] == "A HELPFUL 1 | icon secret | Seal", "dump missed the target's auras: " .. tostring(AshwrightDB.dump.lines[1]))
 C_UnitAuras = savedAuras
 local sawSecretVis = false

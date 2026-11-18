@@ -151,10 +151,29 @@ function ns.Dump()
     end
     f = EnumerateFrames(f)
   end
-  ns.db.dump = { at = ns.safe(GetServerTime), addon = ns.VERSION, frames = frames, skipped = skipped, unsure = unsure, hidden = hidden,
+  -- frames the game leaves out of its list (the target's auras): walk the unit
+  -- frames' own children and keep any not seen above, marked C
+  local seen, unlisted = {}, 0
+  local g = EnumerateFrames()
+  while g do seen[g] = true; g = EnumerateFrames(g) end
+  local function walk(o, depth)
+    if depth > 8 or #lines >= MAX_LINES then return end
+    local kids = { pcall(function() return o:GetChildren() end) }
+    for i = 2, #kids do
+      local c = kids[i]
+      if type(c) == "table" then
+        if not seen[c] then seen[c] = true; unlisted = unlisted + 1; record(c, "C") end
+        walk(c, depth + 1)
+      end
+    end
+  end
+  for _, root in ipairs({ TargetFrame, FocusFrame, PlayerFrame }) do
+    if root then pcall(walk, root, 0) end
+  end
+  ns.db.dump = { at = ns.safe(GetServerTime), addon = ns.VERSION, frames = frames, skipped = skipped, unlisted = unlisted, unsure = unsure, hidden = hidden,
                  truncated = (#lines >= MAX_LINES) or nil, lines = lines }
-  ns.Say(("dump: %d frames recorded, %d of them with secret visibility (%d lines%s). /reload or log out, then send WTF/.../SavedVariables/Ashwright.lua.")
-    :format(frames, unsure, #lines, #lines >= MAX_LINES and ", stopped at the limit" or ""))
+  ns.Say(("dump: %d frames recorded, %d with secret visibility, %d missing from the game's list (%d lines%s). /reload or log out, then send WTF/.../SavedVariables/Ashwright.lua.")
+    :format(frames, unsure, unlisted, #lines, #lines >= MAX_LINES and ", stopped at the limit" or ""))
 end
 
 function ns.ClearDump()
