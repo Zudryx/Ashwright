@@ -2,6 +2,9 @@
 
 Each `## x.y.z` section becomes the release notes for that version.
 
+## 0.1.25
+- `/ash dump` also lists the auras the game says your target has. It now keeps hidden frames too when they belong to the target or are laid out like an aura button (marked `H`). Together these show whether the target's buffs exist as frames at all, and where.
+
 ## 0.1.24
 - `/ash dump` now keeps frames the game won't say are shown or hidden (it answers with a secret). These were dropped before, which left the target's buffs out of the dump. They're marked `F?`, and the count is shown when the dump finishes.
 

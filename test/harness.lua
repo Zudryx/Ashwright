@@ -633,7 +633,24 @@ SlashCmdList.ASHWRIGHT("inspect target"); SlashCmdList.ASHWRIGHT("inspect xp"); 
 local secretVis = new("Button"); secretVis.__name = "SecretVisBuff"
 secretVis.IsVisible = function() return SECRET end
 gameFrames[#gameFrames + 1] = secretVis
+-- the target's auras, as the game reports them (icon secret in a group)
+local savedAuras = C_UnitAuras
+C_UnitAuras = { GetAuraDataByIndex = function(unit, i, filter)
+  if unit == "target" and filter == "HELPFUL" and i == 1 then return { icon = SECRET, name = "Seal" } end
+end }
+-- a hidden aura button anchored to the target is kept as an H line
+local hiddenAura = new("Button"); hiddenAura.__name = "HiddenTargetAura"
+hiddenAura.Icon = new("Texture"); hiddenAura.Cooldown = new("Frame")
+hiddenAura.__shown = false
+gameFrames[#gameFrames + 1] = hiddenAura
 SlashCmdList.ASHWRIGHT("dump")
+local sawHidden = false
+for _, line in ipairs(AshwrightDB.dump.lines) do
+  if line:find("^H HiddenTargetAura") then sawHidden = true end
+end
+assert(sawHidden, "dump dropped a hidden aura-shaped frame")
+assert(AshwrightDB.dump.lines[1] == "A HELPFUL 1 | icon secret | Seal", "dump missed the target's auras: " .. tostring(AshwrightDB.dump.lines[1]))
+C_UnitAuras = savedAuras
 local sawSecretVis = false
 for _, line in ipairs(AshwrightDB.dump.lines) do
   if line:find("^F%? SecretVisBuff") then sawSecretVis = true end

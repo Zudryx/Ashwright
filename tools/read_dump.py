@@ -22,7 +22,7 @@ def load(path):
     out = []
     for m in re.finditer(r'"((?:[^"\\]|\\.)*)",?\n', body):
         s = m.group(1).encode().decode("unicode_escape")
-        if not (s.startswith("F") or s.startswith("  ")):
+        if not (s[:1] in ("F", "H", "A") or s.startswith("  ")):
             break
         out.append(s)
     return out
@@ -30,7 +30,7 @@ def load(path):
 def frames(lines):
     cur = None
     for s in lines:
-        if s.startswith("F ") or s.startswith("F? "):
+        if s.startswith("F ") or s.startswith("F? ") or s.startswith("H "):
             cur = {"line": s, "art": []}
             parts = s.split(" ", 1)[1].split(" | ")
             cur["name"] = parts[0]

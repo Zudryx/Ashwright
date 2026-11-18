@@ -72,6 +72,48 @@ local function regionLine(r)
     clean(layer), clean(sub), clean(art), rect(r), color(r), clean(ns.safe(r.GetAlpha, r)))
 end
 
+
+-- does this frame belong to, or hang from, the target frame?
+local function tiedToTarget(f)
+  local name = clean(ns.safe(f.GetDebugName, f) or ns.safe(f.GetName, f))
+  if type(name) == "string" and name:find("Target", 1, true) then return true end
+  local o, depth = f, 0
+  while o and depth < 12 do
+    if o == TargetFrame then return true end
+    local n = ns.safe(o.GetNumPoints, o) or 0
+    if type(n) == "number" then
+      for i = 1, n do
+        local _, rel = ns.safe(o.GetPoint, o, i)
+        if rel and rel == TargetFrame then return true end
+      end
+    end
+    o = ns.safe(o.GetParent, o); depth = depth + 1
+  end
+  return false
+end
+
+-- a button laid out like an aura: an icon texture plus a cooldown or count
+local function auraLike(f)
+  local icon = f.Icon or f.icon
+  local extra = f.Cooldown or f.cooldown or f.Count or f.count
+  return icon ~= nil and extra ~= nil
+end
+
+-- what the game says the target is wearing right now
+local function targetAuras(lines)
+  if not (C_UnitAuras and C_UnitAuras.GetAuraDataByIndex) then
+    lines[#lines + 1] = "A no aura lookup on this client"
+    return
+  end
+  for _, filter in ipairs({ "HELPFUL", "HARMFUL" }) do
+    for i = 1, 40 do
+      local a = ns.safe(C_UnitAuras.GetAuraDataByIndex, "target", i, filter)
+      if type(a) ~= "table" then break end
+      lines[#lines + 1] = ("A %s %d | icon %s | %s"):format(filter, i, clean(a.icon), clean(a.name))
+    end
+  end
+end
+
 function ns.Dump()
   if not EnumerateFrames then ns.Say("this client can't list its frames.") return end
   local lines, frames, skipped, unsure, hidden = {}, 0, 0, 0, 0
@@ -85,6 +127,7 @@ function ns.Dump()
     end)
     if good then frames = frames + 1 else skipped = skipped + 1 end
   end
+  pcall(targetAuras, lines)
   local f = EnumerateFrames()
   while f and #lines < MAX_LINES do
     local forbidden = f.IsForbidden and f:IsForbidden()
@@ -96,6 +139,10 @@ function ns.Dump()
         record(f, "F")
       elseif ok and visible == false then
         hidden = hidden + 1
+        -- hidden, but kept when it is the target's or shaped like an aura: H lines
+        local keep = false
+        pcall(function() keep = tiedToTarget(f) or auraLike(f) end)
+        if keep then record(f, "H") end
       else
         -- the game would not say whether it is shown (secret or error): keep it, marked F?
         unsure = unsure + 1
