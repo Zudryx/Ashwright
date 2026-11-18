@@ -4,7 +4,7 @@ A dark, minimal reskin of the WoW Forever default UI: flat bars, thin iron borde
 
 Ashwright only changes how Blizzard's frames look. It never moves secure frames, never replaces Blizzard functions and never changes what a button does. Anything that touches a Blizzard frame waits until you are out of combat.
 
-## What it skins (0.1.34)
+## What it skins (0.1.35)
 
 | Module | What changes |
 |---|---|
@@ -14,7 +14,7 @@ Ashwright only changes how Blizzard's frames look. It never moves secure frames,
 | buffs | Your buff and debuff bars by the minimap: each icon cropped square in a dark slot with a thin iron edge. The game's debuff and weapon-enchant borders are replaced by that edge, which takes their color (debuff type, violet for weapon enchants). Time left and stack counts in the addon's font, and a grey iron collapse arrow. |
 | micromenu | The menu buttons (character, spellbook, quest log ... game menu): bar art gone, one panel with the double iron border behind the whole menu, each button's red plate replaced by a dark slot with a thin iron edge. The icons and notification badges stay. The bags bar's border art goes too. |
 | windows | Every window on the game's metal frame (character, talents and spellbook, professions, world map, guild and communities, group finder, bags, settings, friends, merchant, trainer, quest dialogs, and ones that load later) and the game menu: the metal frame replaced by the double iron border, the stone background replaced by the flat panel color, the corner portrait and top streaks gone, the title in the title font, and an iron x for the close button. |
-| controls | What sits inside windows. Item slots (gear, bags, merchant, buyback, mail, loot, professions) become square icons in a dark slot whose thin edge shows the item's quality, and empty bag slots are plain dark slots. Panel buttons become dark plates with an iron edge that brightens on hover. Side tabs (character, group finder, friends) become icon slots, with the chosen tab brighter. |
+| controls | What sits inside windows. Item slots (gear, bags, bank, merchant, buyback, mail, loot, professions) become square icons in a dark slot whose thin edge shows the item's quality, and empty bag slots are plain dark slots. Panel buttons become dark plates with an iron edge that brightens on hover. Side tabs (character, group finder, friends) become icon slots, with the chosen tab brighter. The thin inset frames around lists and money boxes become a 1 px iron line. |
 | castbars | Player, target and focus cast bars: art faded, flat fill on the same dark panel, colored by state (cast amber, channel green, can't interrupt grey, interrupted crimson), spell icon cropped square |
 | chat | Chat font (each window keeps its size), a dark panel behind each chat window that also covers its scroll bar and input box, tab art faded, flat input box |
 | nameplates | Flat health and cast bars with a thin border; your target's plate gets the accent border. Reaction colors are kept. |

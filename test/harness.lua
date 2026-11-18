@@ -841,6 +841,28 @@ assert(math.abs(e[1] - ns.C.ornate[1]) < 1e-6, "selected tab edge not bright")
 local n = #gear.__regions
 ns.modules.controls.Sweep()
 assert(#gear.__regions == n, "item slot styled twice")
+-- loot: the game brought the plate and quality border back; the next look fades them again
+gear.__normal.__alpha, gear.IconBorder.__alpha = 1, 1
+fire("LOOT_OPENED"); if flushTimers then flushTimers() end
+assert(gear.__normal.__alpha == 0 and gear.IconBorder.__alpha == 0, "slot art that came back was not faded again")
+-- and alpha set from a boolean is faded straight away
+gear.__normal.__alpha = 1
+gear.__normal:SetAlphaFromBoolean(true)
+assert(gear.__normal.__alpha == 0, "art shown by SetAlphaFromBoolean stayed")
+-- bank slots: no plate; an empty-slot Background and a slot frame texture
+local bank = CreateFrame("Button", "AshTestBankSlot", UIParent)
+bank.icon = new("Texture"); bank.IconBorder = new("Texture"); bank.IconBorder.__shown = false
+bank.Background = new("Texture"); bank.Background.__atlas = "bags-item-bankslot64"
+local bankFrameArt = new("Texture"); bankFrameArt.__atlas = "bank-frame-bag-slotframe"
+bank.__regions = { bank.Background, bankFrameArt }
+-- an inset: the thin inner frame around lists
+local inset = CreateFrame("Frame", "AshTestInset", UIParent)
+inset.NineSlice = new("Frame")
+local inCorner = new("Texture"); inCorner.__atlas = "UI-Frame-InnerTopLeft"
+inset.NineSlice.TopLeftCorner = inCorner; inset.NineSlice.__regions = { inCorner }
+ns.modules.controls.Sweep()
+assert(bank.__ashSlot and bank.Background.__alpha == 0 and bankFrameArt.__alpha == 0, "bank slot art not replaced")
+assert(inset.__ashInset and inCorner.__alpha == 0 and inset.NineSlice.__ashLine, "inset frame not replaced")
 
 -- /ash dump: every visible frame, secrets written as "secret"; a frame whose
 -- visibility is secret (target buffs in the game) is kept, marked F?

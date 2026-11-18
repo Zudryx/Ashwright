@@ -2,6 +2,11 @@
 
 Each `## x.y.z` section becomes the release notes for that version.
 
+## 0.1.35
+- Loot slots: the game's slot plate and quality border could come back after Ashwright faded them. They're now faded again each time Ashwright looks, which happens whenever loot, bank, mail, trade or the auction house opens. Art the game shows by its newer alpha call is faded straight away too.
+- Bank slots get the same dark slot and quality edge as bag slots. Theirs are built differently, with no plate and a bank slot backing and frame instead.
+- The thin inset frames around lists and money boxes (auction house, mail, NPC talk, charters) become a 1 px iron line.
+
 ## 0.1.34
 - Windows: the title bar strip and the outer edges are no longer see-through. The game's own background starts about 20 px under a window's top and 2 px in from its sides, where the metal frame used to cover. Each window now gets a solid fill from edge to edge. For the world map, the fill goes on the window behind the map, never over it.
 

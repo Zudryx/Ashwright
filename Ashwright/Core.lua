@@ -26,7 +26,7 @@ How it stays safe
 ]]
 
 local ADDON, ns = ...
-ns.VERSION = "0.1.34"
+ns.VERSION = "0.1.35"
 _G.Ashwright = ns
 
 local WHITE = "Interface\\Buttons\\WHITE8X8"
@@ -161,6 +161,11 @@ function ns.Kill(region, hard)
   if not region.__ashKilled then
     region.__ashKilled = true
     ns.Keep(region, "SetAlpha", function(self, a) if a and a > 0 then self:SetAlpha(0) end end)
+    -- this engine can also set alpha from a (possibly secret) boolean; never
+    -- read its arguments, just fade again
+    if region.SetAlphaFromBoolean then
+      ns.Keep(region, "SetAlphaFromBoolean", function(self) self:SetAlpha(0) end)
+    end
   end
   if hard and region.Hide and not region.__ashHidden then
     region.__ashHidden = true
