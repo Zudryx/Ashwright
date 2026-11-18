@@ -77,8 +77,9 @@ methods.GetNumPoints = function(s) return #(s.__points or {}) end
 methods.GetPoint = function(s, i) local pt = (s.__points or {})[i or 1]; if pt then return unpack(pt) end end
 methods.IsVisible = function(s) return s.__shown ~= false end
 methods.GetAtlas = function(s) return s.__atlas end
-methods.SetTexture = function(s, f) s.__file = f end
+methods.SetTexture = function(s, f) s.__file = f; s.__atlas = nil end
 methods.GetTexture = function(s) return s.__file end
+methods.SetAtlas = function(s, a) s.__atlas = a; s.__log[#s.__log + 1] = { "SetAtlas", a } end
 methods.GetStatusBarColor = function(s) if s.__color then return unpack(s.__color) end return 1, 1, 1, 1 end
 methods.Show = function(s) s.__shown = true end
 methods.Hide = function(s) s.__shown = false end
@@ -373,7 +374,7 @@ BagsBar = new("Frame", "BagsBar"); BagsBar.BorderArt = new("Texture")
 local ns = {}
 for _, file in ipairs({ "Core.lua", "Scan.lua", "Inspect.lua", "Dump.lua", "Modules/UnitFrames.lua", "Modules/ActionBars.lua",
                         "Modules/Minimap.lua", "Modules/Chat.lua", "Modules/Nameplates.lua",
-                        "Modules/Tooltip.lua", "Modules/CastBars.lua", "Modules/Buffs.lua", "Modules/MicroMenu.lua", "Modules/Windows.lua", "Init.lua" }) do
+                        "Modules/Tooltip.lua", "Modules/CastBars.lua", "Modules/Buffs.lua", "Modules/MicroMenu.lua", "Modules/Windows.lua", "Modules/Controls.lua", "Init.lua" }) do
   assert(loadfile(DIR .. "/" .. file))("Ashwright", ns)
 end
 
@@ -781,6 +782,52 @@ assert(menu.Header.__ashPlate and #menu.Border.__ashBorder == 3, "game menu has 
 local nBorder = #charWin.NineSlice.__ashBorder
 ns.modules.windows.Sweep()
 assert(#charWin.NineSlice.__ashBorder == nBorder, "window styled twice")
+
+-- insides of windows (from /ash dump)
+-- an item slot: 37x37 button, masked icon, quality IconBorder, UI-Quickslot2 plate
+local function itemSlot(name)
+  local b = CreateFrame("Button", name, UIParent)
+  b.__normal = new("Texture"); b.__normal.__file = 130841
+  b.icon = new("Texture"); b.Mask = new("Texture")
+  b.IconBorder = new("Texture"); b.IconBorder.__shown = true; b.IconBorder.__vc = { 0.12, 1, 0, 1 }
+  return b
+end
+local gear = itemSlot("AshTestHeadSlot")
+local emptyBag = itemSlot("AshTestBagSlot"); emptyBag.IconBorder.__shown = false
+emptyBag.icon.__atlas = "bags-item-slot64"
+-- a panel button: Left / Middle / Right pieces of UI-Panel-Button
+local pbtn = CreateFrame("Button", "AshTestPanelButton", UIParent)
+pbtn.Left, pbtn.Middle, pbtn.Right = new("Texture"), new("Texture"), new("Texture")
+pbtn.Left.__file = 130828
+pbtn.__text = new("FontString")
+-- a side tab
+local stab = CreateFrame("Frame", "AshTestSideTab", UIParent)
+stab.Background = new("Texture"); stab.Background.__atlas = "common-sidetab"
+stab.Icon, stab.Mask = new("Texture"), new("Texture")
+stab.SelectedTexture = new("Texture"); stab.SelectedTexture.__shown = false
+stab.HighlightTexture, stab.TabGlow = new("Texture"), new("Texture")
+ns.modules.controls.Sweep()
+assert(gear.__ashSlot and gear.__normal.__alpha == 0 and gear.IconBorder.__alpha == 0, "item slot art not replaced")
+local e = gear.__ashEdges[1].__vc
+assert(e[1] == 0.12 and e[2] == 1, "item slot edge does not show the quality")
+gear.IconBorder:Hide()                                  -- an item with no quality color
+e = gear.__ashEdges[1].__vc
+assert(math.abs(e[1] - ns.C.slotBorder[1]) < 1e-6, "item slot edge did not go back to iron")
+assert(emptyBag.icon.__alpha == 0, "empty bag slot art still shows")
+emptyBag.icon:SetTexture(135274)                        -- an item goes into the slot
+assert(emptyBag.icon.__alpha == 1, "item icon hidden in a bag slot")
+emptyBag.icon:SetAtlas("bags-item-slot64")              -- and is taken out again
+assert(emptyBag.icon.__alpha == 0, "empty bag slot art came back")
+assert(pbtn.__ashButton and pbtn.Left.__alpha == 0 and pbtn.Middle.__alpha == 0 and #pbtn.__ashEdges == 4, "panel button not replaced")
+assert(stab.__ashTab and stab.Background.__alpha == 0 and stab.SelectedTexture.__alpha == 0, "side tab art not replaced")
+e = stab.__ashEdges[1].__vc
+assert(math.abs(e[1] - ns.C.slotBorder[1]) < 1e-6, "unselected tab edge not iron")
+stab.SelectedTexture:Show()
+e = stab.__ashEdges[1].__vc
+assert(math.abs(e[1] - ns.C.ornate[1]) < 1e-6, "selected tab edge not bright")
+local n = #gear.__regions
+ns.modules.controls.Sweep()
+assert(#gear.__regions == n, "item slot styled twice")
 
 -- /ash dump: every visible frame, secrets written as "secret"; a frame whose
 -- visibility is secret (target buffs in the game) is kept, marked F?

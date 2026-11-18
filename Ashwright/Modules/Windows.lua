@@ -155,6 +155,18 @@ function M.Style(f)
   titleFont((f.TitleContainer and f.TitleContainer.TitleText) or named(f, "TitleText") or rawget(nine, "Text"))
   -- settings keeps its x as ClosePanelButton; its CloseButton is a text button
   M.CloseButton(f.ClosePanelButton or f.CloseButton or named(f, "CloseButton"))
+  M.WatchShow(f)
+end
+
+-- what is inside a window is made or reused as it opens (bag slots, merchant
+-- pages): the controls module looks again each time it is shown
+function M.WatchShow(f)
+  if f.HookScript then
+    f:HookScript("OnShow", function()
+      local c = ns.modules.controls
+      if c and c.SweepSoon and ns.db.modules.controls ~= false then c.SweepSoon() end
+    end)
+  end
 end
 
 function M.StyleDialog(f)
@@ -190,6 +202,7 @@ function M.StyleDialog(f)
     header.__ashPlate = plate
     titleFont(header.Text)
   end
+  M.WatchShow(f)
 end
 
 -- every frame the game has made: style the windows not done yet

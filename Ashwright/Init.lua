@@ -50,7 +50,7 @@ end)
 local HELP = {
   "/ash - status",
   "/ash scan - check which frames this client has, saved for troubleshooting",
-  "/ash module <name> on | off - unitframes, actionbars, castbars, buffs, micromenu, windows, minimap, chat, nameplates, tooltip (needs /reload)",
+  "/ash module <name> on | off - unitframes, actionbars, castbars, buffs, micromenu, windows, controls, minimap, chat, nameplates, tooltip (needs /reload)",
   "/ash ornate on | off - double iron border on the player frame, action bars and minimap (needs /reload)",
   "/ash nameoffset <px> - how far unit frame names sit above the bars (default 4, needs /reload)",
   "/ash dump - record everything on screen (every visible frame and its art), for troubleshooting; /ash dump more adds another screen to it; /ash dump clear removes it",

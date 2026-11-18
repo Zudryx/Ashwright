@@ -2,6 +2,13 @@
 
 Each `## x.y.z` section becomes the release notes for that version.
 
+## 0.1.33
+- New `controls` module for what sits inside windows:
+  - Item slots (gear, bags, merchant, buyback, mail, loot, professions): the square plate and the round icon mask are gone. Each icon sits square in a dark slot whose thin edge takes the item's quality color, and empty bag slots are plain dark slots.
+  - Panel buttons (Defaults, Close and the like): the red art is replaced by a dark plate with an iron edge that brightens on hover.
+  - Side tabs (character, group finder, friends): the rounded gold tab art is gone. Each tab is an icon in a slot, with the chosen tab's edge and icon brighter.
+  - Slots are looked at again each time a window opens, so bag and merchant pages stay styled. `/ash module controls off` turns it off.
+
 ## 0.1.32
 - Windows: bags are restyled too (the game names their frame in lower case, which was missed). Settings and bags get the flat background (theirs is a frame, not a single texture), and Settings' title and close x are handled.
 - The game menu (Esc) gets the double iron border in place of its diamond-metal frame, a flat background, and a small iron-edged plate behind its title.
