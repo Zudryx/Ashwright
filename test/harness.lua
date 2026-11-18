@@ -373,7 +373,7 @@ BagsBar = new("Frame", "BagsBar"); BagsBar.BorderArt = new("Texture")
 local ns = {}
 for _, file in ipairs({ "Core.lua", "Scan.lua", "Inspect.lua", "Dump.lua", "Modules/UnitFrames.lua", "Modules/ActionBars.lua",
                         "Modules/Minimap.lua", "Modules/Chat.lua", "Modules/Nameplates.lua",
-                        "Modules/Tooltip.lua", "Modules/CastBars.lua", "Modules/Buffs.lua", "Modules/MicroMenu.lua", "Init.lua" }) do
+                        "Modules/Tooltip.lua", "Modules/CastBars.lua", "Modules/Buffs.lua", "Modules/MicroMenu.lua", "Modules/Windows.lua", "Init.lua" }) do
   assert(loadfile(DIR .. "/" .. file))("Ashwright", ns)
 end
 
@@ -717,6 +717,44 @@ assert(questMB.Background.__alpha == 0, "micro button plate came back")
 local regionsBefore = #questMB.__regions
 ns.modules.micromenu.Sweep()
 assert(#questMB.__regions == regionsBefore and MicroMenu.__ashPanel, "micro menu restyled twice")
+
+-- windows (from /ash dump): a metal nine-slice over the content, a stone Bg,
+-- streaks, a round portrait, a title and a red close button
+local function metalWindow(name)
+  local w = CreateFrame("Frame", name, UIParent)
+  w.NineSlice = new("Frame")
+  local corner = new("Texture"); corner.__atlas = "UI-Frame-PortraitMetal-CornerTopLeft"
+  w.NineSlice.TopLeftCorner = corner
+  w.NineSlice.__regions = { corner, new("Texture") }
+  w.Bg = new("Texture"); w.Bg.__atlas = "Profession-Background-Overview"
+  w.TopTileStreaks = new("Texture")
+  w.PortraitContainer = { portrait = new("Texture") }
+  w.TitleContainer = { TitleText = new("FontString") }
+  w.CloseButton = new("Button"); w.CloseButton.__normal = new("Texture")
+  return w
+end
+local tooltipish = CreateFrame("Frame", "AshTestTooltipish", UIParent)   -- a nine-slice that is not a window
+tooltipish.NineSlice = new("Frame"); tooltipish.NineSlice.TopLeftCorner = new("Texture")
+tooltipish.NineSlice.TopLeftCorner.__atlas = "Tooltip-NineSlice-CornerTopLeft"
+local charWin = metalWindow("AshTestCharacterFrame")
+ns.modules.windows.Sweep()
+assert(charWin.__ashWindow, "metal window not styled")
+assert(not tooltipish.__ashWindow, "a non-window nine-slice was styled")
+assert(charWin.NineSlice.TopLeftCorner.__alpha == 0, "metal frame not faded")
+assert(charWin.NineSlice.__ashBorder and #charWin.NineSlice.__ashBorder == 3, "window has no iron border")
+assert(charWin.Bg.__file == ns.WHITE and charWin.Bg.__vc[1] == ns.C.panelSolid[1], "window background not flat")
+charWin.Bg:SetTexture("Interface\\FrameGeneral\\UI-Background-Rock")   -- the game swaps the art per page
+assert(charWin.Bg.__file == ns.WHITE, "window background art came back")
+assert(charWin.TopTileStreaks.__alpha == 0 and charWin.PortraitContainer.portrait.__alpha == 0, "streaks or portrait left")
+assert(charWin.CloseButton.__normal.__alpha == 0 and charWin.CloseButton.__ashX, "close button not replaced")
+-- a window from a part that loads later is found after it loads
+local later = metalWindow("AshTestProfessionsFrame")
+fire("ADDON_LOADED", "Blizzard_Professions")
+if flushTimers then flushTimers() end
+assert(later.__ashWindow, "window that loaded later not styled")
+local nBorder = #charWin.NineSlice.__ashBorder
+ns.modules.windows.Sweep()
+assert(#charWin.NineSlice.__ashBorder == nBorder, "window styled twice")
 
 -- /ash dump: every visible frame, secrets written as "secret"; a frame whose
 -- visibility is secret (target buffs in the game) is kept, marked F?

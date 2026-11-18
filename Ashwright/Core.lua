@@ -26,7 +26,7 @@ How it stays safe
 ]]
 
 local ADDON, ns = ...
-ns.VERSION = "0.1.30"
+ns.VERSION = "0.1.31"
 _G.Ashwright = ns
 
 local WHITE = "Interface\\Buttons\\WHITE8X8"
@@ -56,7 +56,7 @@ local DEFAULTS = {
   chatPanel = true,    -- dark panel behind chat windows
   nameOffset = 4,      -- pixels unit frame names are lifted above the panel edge
   modules = { unitframes = true, actionbars = true, minimap = true, chat = true,
-              nameplates = true, tooltip = true, castbars = true, buffs = true, micromenu = true },
+              nameplates = true, tooltip = true, castbars = true, buffs = true, micromenu = true, windows = true },
   alignTarget = true,
   -- Optional font files. Drop TTFs at these paths to use them; the
   -- game's own fonts are used when they are missing.

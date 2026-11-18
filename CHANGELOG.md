@@ -2,6 +2,9 @@
 
 Each `## x.y.z` section becomes the release notes for that version.
 
+## 0.1.31
+- New `windows` module: the frame around every window on the game's metal frame is replaced. That covers character, talents and spellbook, professions, world map, guild and communities, group finder, and windows that load later. The metal goes and the double iron border takes its place, the stone background becomes the flat panel color, the corner portrait and top streaks go, the title uses the title font, and the red close button becomes an iron x. No window changes its frame level, so the world map stays safe. Insides of the windows come next. `/ash module windows off` turns it off.
+
 ## 0.1.30
 - `/ash dump more` adds what's on screen now to the last dump instead of replacing it, skipping frames it already holds. Several windows (character, spellbook, quest log, bags...) can go into one file.
 
