@@ -31,7 +31,17 @@ function M.IsWindow(f)
   local nine = type(f) == "table" and rawget(f, "NineSlice") or nil
   if type(nine) ~= "table" then return false end
   local a = atlasOf(rawget(nine, "TopLeftCorner"))
-  return a ~= nil and a:find("Frame%-.*Metal") ~= nil
+  -- the bags spell it in lower case: ui-frame-portraitmetal-cornertopleftsmall
+  return a ~= nil and a:lower():find("frame%-.*metal") ~= nil
+end
+
+-- a dialog on the game's diamond-metal frame (the game menu): a Border frame
+-- holding the corners, edges and a Bg texture, and a Header plate on top
+function M.IsDialog(f)
+  local border = type(f) == "table" and rawget(f, "Border") or nil
+  if type(border) ~= "table" then return false end
+  local a = atlasOf(rawget(border, "TopLeftCorner"))
+  return a ~= nil and a:lower():find("diamondmetal") ~= nil
 end
 
 local function named(f, suffix)
@@ -68,9 +78,33 @@ local function flatten(t)
     self.__ashPainting = nil
   end
   paint(t)
-  for _, m in ipairs({ "SetTexture", "SetAtlas" }) do
+  for _, m in ipairs({ "SetTexture", "SetAtlas", "SetColorTexture", "SetVertexColor" }) do
     ns.Keep(t, m, function(self) if not self.__ashPainting then paint(self) end end)
   end
+end
+
+-- a background that is a frame of its own (bags, settings: a small nine-slice
+-- of dark textures): its art goes and one flat texture fills it
+local function flattenFrame(bg)
+  if not bg or bg.__ashFlat then return end
+  bg.__ashFlat = true
+  ns.KillTextures(bg)
+  local t = bg:CreateTexture(nil, "BACKGROUND", nil, -8)
+  t:SetAllPoints(bg)
+  t:SetTexture(ns.WHITE)
+  t:SetVertexColor(unpack(C.panelSolid))
+  bg.__ashFill = t
+end
+
+local function background(bg)
+  if not bg then return end
+  if bg.GetObjectType and bg:GetObjectType() == "Texture" then flatten(bg) else flattenFrame(bg) end
+end
+
+local function titleFont(fs)
+  if not fs then return end
+  ns.Font(fs, "title")
+  fs:SetTextColor(C.title[1], C.title[2], C.title[3])
 end
 
 -- the close button: red art faded, a dark slot with an iron x in its place
@@ -112,17 +146,50 @@ function M.Style(f)
   local nine = f.NineSlice
   ns.KillTextures(nine)
   border(nine, f)
-  flatten(f.Bg or named(f, "Bg"))
+  background(f.Bg or named(f, "Bg"))
   ns.Kill(f.TopTileStreaks)
   local pc = f.PortraitContainer
   ns.Each(function(t) ns.Kill(t) end,
           f.portrait, pc and pc.portrait, named(f, "Portrait"))
-  local title = (f.TitleContainer and f.TitleContainer.TitleText) or named(f, "TitleText")
-  if title then
-    ns.Font(title, "title")
-    title:SetTextColor(C.title[1], C.title[2], C.title[3])
+  -- the title: in the title bar, or (settings) on the nine-slice itself
+  titleFont((f.TitleContainer and f.TitleContainer.TitleText) or named(f, "TitleText") or rawget(nine, "Text"))
+  -- settings keeps its x as ClosePanelButton; its CloseButton is a text button
+  M.CloseButton(f.ClosePanelButton or f.CloseButton or named(f, "CloseButton"))
+end
+
+function M.StyleDialog(f)
+  if f.__ashWindow or not M.IsDialog(f) then return end
+  f.__ashWindow = true
+  local border = f.Border
+  local keep = {}
+  if border.Bg then flatten(border.Bg); keep[border.Bg] = true end
+  ns.KillTextures(border, keep)
+  local px = ns.Pixel(f)
+  local outline = ns.Box(border, px, false)
+  outline:SetAllPoints(f)
+  outline:SetBackdropBorderColor(unpack(C.ornate))
+  local band = ns.Box(border, 3 * px, false)
+  band:SetPoint("TOPLEFT", f, "TOPLEFT", -3 * px, 3 * px)
+  band:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", 3 * px, -3 * px)
+  band:SetBackdropBorderColor(unpack(C.outer))
+  local line = ns.Box(border, px, false)
+  line:SetPoint("TOPLEFT", f, "TOPLEFT", -4 * px, 4 * px)
+  line:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", 4 * px, -4 * px)
+  line:SetBackdropBorderColor(unpack(C.outerLine))
+  border.__ashBorder = { outline, band, line }
+  -- the header plate becomes a small iron-edged plate behind the title; it
+  -- hangs from the menu (below the header), so the title text stays on top
+  local header = f.Header
+  if header then
+    ns.KillTextures(header)
+    local plate = ns.Box(f, px)
+    plate:SetPoint("TOPLEFT", header, "TOPLEFT", 6, -6)
+    plate:SetPoint("BOTTOMRIGHT", header, "BOTTOMRIGHT", -6, 8)
+    plate:SetBackdropColor(unpack(C.panelSolid))
+    plate:SetBackdropBorderColor(unpack(C.ornate))
+    header.__ashPlate = plate
+    titleFont(header.Text)
   end
-  M.CloseButton(f.CloseButton or named(f, "CloseButton"))
 end
 
 -- every frame the game has made: style the windows not done yet
@@ -131,9 +198,12 @@ function M.Sweep()
   local f = EnumerateFrames()
   while f do
     -- a cheap look first (raw fields only); the guarded work is for windows
-    if not rawget(f, "__ashWindow") and rawget(f, "NineSlice") then
+    if not rawget(f, "__ashWindow") and (rawget(f, "NineSlice") or rawget(f, "Border")) then
       local ok, forbidden = pcall(f.IsForbidden, f)
-      if ok and not forbidden and M.IsWindow(f) then ns.Guard("windows style", M.Style, f) end
+      if ok and not forbidden then
+        if M.IsWindow(f) then ns.Guard("windows style", M.Style, f)
+        elseif M.IsDialog(f) then ns.Guard("windows dialog", M.StyleDialog, f) end
+      end
     end
     f = EnumerateFrames(f)
   end

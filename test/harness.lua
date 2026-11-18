@@ -752,6 +752,32 @@ local later = metalWindow("AshTestProfessionsFrame")
 fire("ADDON_LOADED", "Blizzard_Professions")
 if flushTimers then flushTimers() end
 assert(later.__ashWindow, "window that loaded later not styled")
+-- bags: the corner atlas is lower case, and the background is a frame of its own
+local bags = metalWindow("AshTestCombinedBags")
+bags.NineSlice.TopLeftCorner.__atlas = "ui-frame-portraitmetal-cornertopleftsmall"
+local bagBgCorner = new("Texture")
+bags.Bg = new("Frame"); bags.Bg.__regions = { bagBgCorner }
+-- settings: the x is ClosePanelButton, the title sits on the nine-slice
+local settings = metalWindow("AshTestSettingsPanel")
+settings.NineSlice.TopLeftCorner.__atlas = "UI-Frame-Metal-CornerTopLeft"
+settings.NineSlice.Text = new("FontString")
+settings.ClosePanelButton = new("Button"); settings.ClosePanelButton.__normal = new("Texture")
+-- the game menu: diamond-metal Border with a Bg texture, and a Header plate
+local menu = CreateFrame("Frame", "AshTestGameMenu", UIParent)
+menu.Border = new("Frame")
+local dCorner = new("Texture"); dCorner.__atlas = "UI-Frame-DiamondMetal-CornerTopLeft"
+menu.Border.TopLeftCorner = dCorner
+menu.Border.Bg = new("Texture")
+menu.Border.__regions = { dCorner, menu.Border.Bg }
+local hLeft = new("Texture")
+menu.Header = new("Frame"); menu.Header.__regions = { hLeft }; menu.Header.Text = new("FontString")
+ns.modules.windows.Sweep()
+assert(bags.__ashWindow and bags.NineSlice.TopLeftCorner.__alpha == 0, "bags not styled (lower-case atlas)")
+assert(bagBgCorner.__alpha == 0 and bags.Bg.__ashFill, "bags background frame not flattened")
+assert(settings.__ashWindow and settings.ClosePanelButton.__ashX, "settings x not replaced")
+assert(menu.__ashWindow and dCorner.__alpha == 0 and hLeft.__alpha == 0, "game menu frame not replaced")
+assert(menu.Border.Bg.__alpha ~= 0 and menu.Border.Bg.__file == ns.WHITE, "game menu background not flat")
+assert(menu.Header.__ashPlate and #menu.Border.__ashBorder == 3, "game menu has no plate or border")
 local nBorder = #charWin.NineSlice.__ashBorder
 ns.modules.windows.Sweep()
 assert(#charWin.NineSlice.__ashBorder == nBorder, "window styled twice")

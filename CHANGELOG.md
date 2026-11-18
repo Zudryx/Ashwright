@@ -2,6 +2,10 @@
 
 Each `## x.y.z` section becomes the release notes for that version.
 
+## 0.1.32
+- Windows: bags are restyled too (the game names their frame in lower case, which was missed). Settings and bags get the flat background (theirs is a frame, not a single texture), and Settings' title and close x are handled.
+- The game menu (Esc) gets the double iron border in place of its diamond-metal frame, a flat background, and a small iron-edged plate behind its title.
+
 ## 0.1.31
 - New `windows` module: the frame around every window on the game's metal frame is replaced. That covers character, talents and spellbook, professions, world map, guild and communities, group finder, and windows that load later. The metal goes and the double iron border takes its place, the stone background becomes the flat panel color, the corner portrait and top streaks go, the title uses the title font, and the red close button becomes an iron x. No window changes its frame level, so the world map stays safe. Insides of the windows come next. `/ash module windows off` turns it off.
 
